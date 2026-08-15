@@ -27,6 +27,12 @@
   --sidebar:212px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
+/* The `hidden` attribute has to outrank layout rules, or an element with `display:grid` or
+   `display:flex` stays on screen while the script believes it is gone. That has now happened
+   twice — the funding-source picker and the token buttons — so it is settled here once for
+   every page rather than patched selector by selector. */
+[hidden]{display:none!important}
+
 body{
   background:var(--bg);color:var(--ink);min-height:100vh;
   font:400 16px/1.55 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;

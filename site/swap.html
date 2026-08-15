@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Swap — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=26"/>
+<link rel="stylesheet" href="assets/app.css?v=27"/>
 <style>
   /* One card, so the column is centred in the pane rather than hugging the left edge the way
      the data pages do. */
@@ -49,9 +49,6 @@
   .tokbtn .sym{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tokbtn .chev{font-style:normal;font-size:9px;opacity:.6;margin-left:1px}
   .tokbtn.empty{color:var(--ink);background:linear-gradient(180deg,#c94cf0,#8b3ff0);border-color:transparent}
-  /* `display:flex` above beats the browser's own [hidden]{display:none}, so both the USDC pill
-     and the token button rendered side by side in each panel. */
-  .tokbtn[hidden]{display:none}
 
   .flip2{display:flex;justify-content:center;margin:-11px 0;position:relative;z-index:2}
   .flip2 button{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
