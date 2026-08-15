@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Swap — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=22"/>
+<link rel="stylesheet" href="assets/app.css?v=25"/>
 <style>
   /* One card, so the column is centred in the pane rather than hugging the left edge the way
      the data pages do. */
@@ -233,16 +233,17 @@
 
     <div class="leg2">
       <div class="lbl">
-        <span>You pay</span>
+        <span id="payLbl">You pay</span>
         <span class="bal">Balance: <b id="ubTotal">—</b></span>
         <button class="maxbtn" id="max">MAX</button>
       </div>
       <div class="row">
         <input class="bigamt" id="pay" type="number" min="0" step="any" placeholder="0.0" inputmode="decimal"/>
-        <span class="tokbtn" style="cursor:default">
+        <span class="tokbtn" id="payUsdc" style="cursor:default">
           <span class="av"><img src="assets/usdc.png" alt="" width="24" height="24"/></span>
           <span class="sym">USDC</span>
         </span>
+        <button class="tokbtn empty" id="payPick" hidden><span class="sym">Select token</span><i class="chev">▼</i></button>
       </div>
       <div class="fiat" id="payFiat"></div>
 
@@ -293,14 +294,17 @@
 
     <div class="leg2">
       <div class="lbl">
-        <span>You receive</span>
+        <span id="recvLbl">You receive</span>
         <span class="bal" id="outBal"></span>
       </div>
       <div class="row">
         <input class="bigamt" id="recv" placeholder="0.0" disabled/>
         <button class="tokbtn empty" id="pick">
-          <span class="sym" id="pickSym">Select token</span><i class="chev">▼</i>
+          <span class="sym">Select token</span><i class="chev">▼</i>
         </button>
+        <span class="tokbtn" id="recvUsdc" hidden style="cursor:default">
+          <span class="av"><img src="assets/usdc.png" alt=""/></span><span class="sym">USDC</span>
+        </span>
       </div>
       <div class="fiat" id="recvFiat"></div>
     </div>
@@ -313,6 +317,7 @@
       <div class="tr"><span>Slippage tolerance</span>
         <b><span class="slips" id="slips"></span><input class="slipin" id="slipCustom" type="number" min="0.1" max="50" step="0.1" placeholder="custom"/></b></div>
       <div class="tr"><span>Swap fee · buy and sell <i class="q" title="Charged by the curve on every trade. Creator, protocol and referrer split it.">?</i></span><b id="tFee">—</b></div>
+      <div class="tr" id="taxRow" hidden><span>Sell tax <i class="q" title="Decays block by block after launch. It is already taken out of the figure above — this is not charged on top.">?</i></span><b id="tTax">—</b></div>
       <div class="tr" id="routeRow"><span>Route</span><b id="tRoute">—</b></div>
     </div>
 
@@ -420,9 +425,11 @@ async function loadBalance() {
   loadWallet();
 }
 
-/** The headline balance follows whichever source is selected. */
+/** The headline balance follows the direction, then the selected source. */
 function paintBalance() {
-  $('ubTotal').textContent = spendable().toFixed(2);
+  $('ubTotal').textContent = selling()
+    ? (token ? qty(tokenBal) : '—')
+    : spendable().toFixed(2);
 }
 
 const usingUnified = () => $('srcUb').checked;
@@ -630,6 +637,7 @@ function openPicker() {
 const closePicker = () => $('tokwrap').classList.remove('on');
 
 $('pick').addEventListener('click', openPicker);
+$('payPick').addEventListener('click', openPicker);
 $('tokClose').addEventListener('click', closePicker);
 $('tokwrap').addEventListener('click', (e) => { if (e.target === $('tokwrap')) closePicker(); });
 $('tokQ').addEventListener('input', renderPicker);
@@ -643,6 +651,7 @@ $('tokList').addEventListener('click', async (e) => {
   token = mine ? fromLaunch(mine) : await resolveUnknown(addr);
   closePicker();
   paintToken();
+  if (selling()) await loadTokenBalance();
   // Re-quote here too, not only on amount input: picking the coin after typing the amount is the
   // normal order, and without this the receive field stayed empty until the amount was retyped.
   quote();
@@ -650,11 +659,13 @@ $('tokList').addEventListener('click', async (e) => {
 });
 
 function paintToken() {
-  const btn = $('pick');
-  if (!token) { btn.className = 'tokbtn empty'; $('pickSym').textContent = 'Select token'; return; }
+  const btn = selling() ? $('payPick') : $('pick');
+  // Scoped to the button being dressed, never by id: both directions have a token button, and
+  // stamping the same id into each made getElementById hand back whichever came first.
+  if (!token) { btn.className = 'tokbtn empty'; btn.querySelector('.sym').textContent = 'Select token'; return; }
   btn.className = 'tokbtn';
   btn.innerHTML = `<span class="av">${hexaShell.art(token.address, token.image, { eager: true })}</span>` +
-    `<span class="sym" id="pickSym">${token.symbol}</span>` +
+    `<span class="sym">${token.symbol}</span>` +
     (token.hexapus ? '' : `<span class="warnpill">${WARN_ICON}</span>`) + `<i class="chev">▼</i>`;
   $('outBal').innerHTML = token.hexapus ? '' :
     `<span style="color:#ffcf5a">not from Hexapus</span>`;
@@ -665,6 +676,11 @@ function paintToken() {
 $('pay').addEventListener('input', () => { quote(); gate(); });
 
 $('max').addEventListener('click', () => {
+  if (selling()) {
+    // No gas buffer here: the coin is not what pays for gas.
+    if (tokenBal > 0) { $('pay').value = String(tokenBal); quote(); gate(); }
+    return;
+  }
   const b = spendable();
   if (!(b > 0)) return;
   // Arc's gas is USDC, so spending the literal balance leaves nothing to pay the fee with. The
@@ -673,10 +689,54 @@ $('max').addEventListener('click', () => {
   quote(); gate();
 });
 
+/**
+ * Direction. Buying spends USDC and receives the coin; selling does the reverse and lands the
+ * proceeds as USDC on Arc — not in the unified balance, because the curve pays out on Arc and
+ * moving it back through Gateway would be a second signature for something nobody asked for.
+ */
+let dir = 'buy';
+const selling = () => dir === 'sell';
+
 $('flip').addEventListener('click', () => {
-  $('err').textContent = 'Selling back to your unified balance is not wired yet — this direction '
-    + 'pays USDC in and takes the coin out.';
+  dir = selling() ? 'buy' : 'sell';
+  $('pay').value = '';
+  $('err').textContent = ''; $('done').hidden = true;
+  $('steps').className = 'steps2';
+  paintDirection();
+  quote(); gate();
+  if (selling()) loadTokenBalance();
 });
+
+/** Moves the two controls between panels and renames the labels. Nothing else shifts. */
+function paintDirection() {
+  const sell = selling();
+  $('payLbl').textContent = 'You pay';
+  $('recvLbl').textContent = 'You receive';
+  $('payUsdc').hidden = sell;
+  $('payPick').hidden = !sell;
+  $('pick').hidden = sell;
+  $('recvUsdc').hidden = !sell;
+  // The funding source is a question about USDC. Selling starts from the coin, so it goes away.
+  $('srcbox').hidden = sell || !hexa.currentAccount();
+  $('breakdown').style.display = sell ? 'none' : '';
+  $('flip').title = sell ? 'Selling the coin for USDC on Arc' : 'Paying USDC in, taking the coin out';
+  paintToken();
+  paintBalance();
+}
+
+/** The coin's own balance, which is what MAX means when selling. */
+let tokenBal = 0;
+async function loadTokenBalance() {
+  tokenBal = 0;
+  const account = hexa.currentAccount();
+  if (!account || !token) { paintBalance(); return; }
+  try {
+    const raw = await hexa.read(token.address, 'HexaToken', 'balanceOf', [account]);
+    tokenBal = Number(hexa.formatEther(raw));
+  } catch { tokenBal = 0; }
+  paintBalance();
+  gate();
+}
 
 /**
  * The received amount is quoted off the coin's own curve, not guessed from a price. For a token
@@ -684,6 +744,7 @@ $('flip').addEventListener('click', () => {
  * number next to a warning badge.
  */
 async function quote() {
+  if (selling()) return quoteSell();
   const usdc = Number($('pay').value);
   $('payFiat').textContent = usdc > 0 ? '≈ ' + money(usdc) : '';
   if (!token?.curve || !(usdc > 0)) {
@@ -711,7 +772,49 @@ async function quote() {
     $('tMin').textContent = `${qty(Number(hexa.formatEther(min)))} ${token.symbol}`;
     $('tFee').textContent = feeBps === null ? '—'
       : `${(Number(feeBps) / 100).toFixed(2)}%  ·  ${money(usdc * Number(feeBps) / 10_000)}`;
+    $('taxRow').hidden = true;
     paintRoute(usdc);
+  } catch {
+    $('recv').value = ''; $('recvFiat').textContent = 'No quote available.';
+    $('terms').hidden = true; lastQuote = null;
+  }
+}
+
+/**
+ * Selling quotes in the other unit: tokens in, USDC out. `quoteSell` already deducts the sell
+ * tax and the trading fee, so the figure shown is what actually lands — the tax line below says
+ * so explicitly rather than reading as another charge on top.
+ */
+async function quoteSell() {
+  const amt = Number($('pay').value);
+  $('payFiat').textContent = '';
+  if (!token?.curve || !(amt > 0)) {
+    $('recv').value = ''; $('recvFiat').textContent = '';
+    $('terms').hidden = true; lastQuote = null;
+    return;
+  }
+  try {
+    const inWei = hexa.parseEther(String(amt));
+    const [out, feeBps, taxBps] = await Promise.all([
+      hexa.read(token.curve, 'HexaCurve', 'quoteSell', [inWei]),
+      hexa.read(token.curve, 'HexaCurve', 'FEE_BPS', []).catch(() => null),
+      hexa.read(token.curve, 'HexaCurve', 'sellTaxBps', []).catch(() => null),
+    ]);
+    const min = (out * (10_000n - BigInt(Math.round(slipPct * 100)))) / 10_000n;
+    const outN = Number(hexa.formatEther(out));
+    lastQuote = { out, min };
+
+    $('recv').value = outN.toFixed(4);
+    $('recvFiat').textContent = '≈ ' + money(outN);
+    $('terms').hidden = false;
+    // Same orientation as buying — a single DOGA is worth far less than a cent, and
+    // "1 DOGA ≈ $0.00" told the seller nothing.
+    $('tRate').textContent = `1 USDC ≈ ${qty(amt / outN)} ${token.symbol}`;
+    $('tMin').textContent = money(Number(hexa.formatEther(min)));
+    $('tFee').textContent = feeBps === null ? '—' : `${(Number(feeBps) / 100).toFixed(2)}%`;
+    $('taxRow').hidden = taxBps === null;
+    $('tTax').textContent = taxBps === null ? '—' : `${(Number(taxBps) / 100).toFixed(1)}%`;
+    $('tRoute').textContent = 'Curve → USDC on Arc';
   } catch {
     $('recv').value = ''; $('recvFiat').textContent = 'No quote available.';
     $('terms').hidden = true; lastQuote = null;
@@ -765,6 +868,10 @@ function gate() {
   else if (!token) { label = 'Select a token'; ok = false; }
   else if (!(usdc > 0)) { label = 'Enter an amount'; ok = false; }
   else if (!token.hexapus) { label = 'Unsupported token'; ok = false; }
+  else if (selling()) {
+    label = 'Sell';
+    if (usdc > tokenBal + 1e-9) { label = `Not enough ${token.symbol}`; ok = false; }
+  }
   else if (usdc > spendable()) {
     // Point at the way out rather than just refusing: the money may well be there, one radio
     // button away, and "Not enough USDC" alone would send them to a faucet they do not need.
@@ -783,9 +890,11 @@ let slipPct = 1;
 /** Held back by MAX on Arc so the buy still has gas. Generous — a failed trade costs more. */
 const GAS_BUFFER = 0.05;
 const STEPS = [['pull', 'Pull USDC to Arc'], ['buy', 'Buy on the curve']];
+const SELL_STEPS = [['approve', 'Allow the curve to take the coin'], ['sell', 'Sell on the curve']];
 function paintSteps(state) {
+  const steps = selling() ? SELL_STEPS : STEPS;
   $('steps').className = 'steps2 on';
-  $('steps').innerHTML = STEPS.map(([k, t], i) =>
+  $('steps').innerHTML = steps.map(([k, t], i) =>
     `<div class="st ${state[k] ?? ''}"><span class="dot">${state[k] === 'ok' ? '✓' : i + 1}</span>
      <span class="t">${t}</span></div>`).join('');
 }
@@ -821,6 +930,43 @@ $('go').addEventListener('click', async () => {
   btn.disabled = true; busy = true;
   $('err').textContent = ''; $('done').hidden = true;
   const state = {};
+
+  if (selling()) {
+    try {
+      const amount = hexa.parseEther(String(usdc));
+      // The curve pulls with transferFrom, so it needs an allowance before it can take anything.
+      // Checked rather than always approved: a second approval for an allowance that already
+      // covers the trade is a signature and a fee for nothing.
+      const allowance = await hexa.read(token.address, 'HexaToken', 'allowance', [account, token.curve]);
+      if (allowance < amount) {
+        state.approve = 'run'; paintSteps(state);
+        btn.textContent = `Approving ${token.symbol}…`;
+        await hexa.write(token.address, 'HexaToken', 'approve', [token.curve, amount]);
+      }
+      state.approve = 'ok'; state.sell = 'run'; paintSteps(state);
+      btn.textContent = `Selling ${token.symbol}…`;
+
+      const fresh = await hexa.read(token.curve, 'HexaCurve', 'quoteSell', [amount]);
+      const floor = (fresh * (10_000n - BigInt(Math.round(slipPct * 100)))) / 10_000n;
+      await hexa.write(token.curve, 'HexaCurve', 'sell',
+        [amount, floor < lastQuote.min ? floor : lastQuote.min, account]);
+
+      state.sell = 'ok'; paintSteps(state);
+      btn.textContent = 'Done';
+      $('pay').value = ''; $('recv').value = '';
+      $('done').hidden = false;
+      $('done').innerHTML = `Sold <b>${token.symbol}</b> for USDC on Arc.`;
+      await Promise.all([loadBalance(), loadTokenBalance()]);
+    } catch (e) {
+      for (const k of Object.keys(state)) if (state[k] === 'run') state[k] = 'err';
+      paintSteps(state);
+      $('err').textContent = e.shortMessage ?? e.message;
+    }
+    busy = false;
+    await new Promise((r) => setTimeout(r, 1200));
+    await checkChain();
+    return;
+  }
 
   try {
     // Only reach for the Gateway when the unified balance was chosen AND Arc alone cannot cover
@@ -871,7 +1017,7 @@ $('go').addEventListener('click', async () => {
 });
 
 loadListed();
-paintToken();
+paintDirection();
 paintSlip();
 gate();
 checkChain();
