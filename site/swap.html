@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Swap — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=20"/>
+<link rel="stylesheet" href="assets/app.css?v=21"/>
 <style>
   /* One card, so the column is centred in the pane rather than hugging the left edge the way
      the data pages do. */
@@ -124,6 +124,10 @@
   .deprow input::-webkit-outer-spin-button,.deprow input::-webkit-inner-spin-button{
     -webkit-appearance:none;appearance:none;margin:0}
   .deprow .btn{flex:0 0 auto;padding:8px 14px;font-size:13px}
+  /* Amber, not red: money in flight is not an error. */
+  .deppending{margin-top:9px;padding:9px 11px;border-radius:10px;font-size:12px;line-height:1.6;
+    color:#ffdcae;background:rgba(255,190,60,.09);border:1px solid rgba(255,190,60,.3)}
+  .deppending b{color:#ffcf5a}
 
   /* trade terms */
   .terms{margin-top:14px;padding:12px 14px;border-radius:13px;
@@ -267,6 +271,7 @@
             <input id="depAmt" type="number" min="0" step="any" placeholder="0.00" inputmode="decimal"/>
             <button class="btn" id="depGo">Deposit</button>
           </div>
+          <div class="deppending" id="depPending" hidden></div>
           <div class="err2" id="depErr" style="margin-top:8px"></div>
         </div>
       </div>
@@ -477,14 +482,69 @@ $('depGo').addEventListener('click', async () => {
   if (!(amount > 0)) { $('depErr').textContent = 'Enter an amount to deposit.'; return; }
   btn.disabled = true; btn.textContent = 'Confirm in wallet…';
   try {
-    await hexaSwap.deposit({ chain: $('depChain').dataset.chain, amount: amount.toFixed(6) });
+    const chain = $('depChain').dataset.chain;
+    await hexaSwap.deposit({ chain, amount: amount.toFixed(6) });
     $('depAmt').value = '';
+    // The deposit landing on chain is not the same as Gateway crediting it: Circle waits for the
+    // source chain to finalise first. Reading the balance once, immediately, always came back
+    // unchanged — which looked exactly like a deposit that had failed.
+    pending = { chain, amount, since: Date.now(), baseline: Number(ub?.total ?? 0) };
+    paintPending();
     await Promise.all([loadBalance(), loadWallet()]);
+    pollPending();
   } catch (e) {
     $('depErr').textContent = e.shortMessage ?? e.message;
   }
   btn.disabled = false; btn.textContent = 'Deposit';
 });
+
+/**
+ * A deposit in flight.
+ *
+ * Nothing here polls the chain — it re-asks Circle for the balance until the figure moves, which
+ * is the only signal that matters. Ethereum needs a couple of epochs to finalise, so several
+ * minutes of "nothing happening" is normal and has to be said out loud rather than left as a
+ * balance that stubbornly reads 0.00.
+ */
+let pending = null;
+let pendingTimer = null;
+const PENDING_POLL_MS = 15000;
+const PENDING_GIVE_UP_MS = 25 * 60 * 1000;
+
+function paintPending() {
+  const el = $('depPending');
+  if (!pending) { el.hidden = true; return; }
+  const name = hexaSwap.byChain(pending.chain)?.name ?? pending.chain;
+  const mins = Math.floor((Date.now() - pending.since) / 60000);
+  el.hidden = false;
+  el.innerHTML = `<b>${pending.amount.toFixed(2)} USDC arriving from ${name}.</b> `
+    + `Gateway credits a deposit only once the source chain finalises — a few minutes on `
+    + `Ethereum, quicker elsewhere. This updates itself${mins >= 1 ? ` · ${mins}m` : ''}.`;
+}
+
+function pollPending() {
+  clearTimeout(pendingTimer);
+  if (!pending) return;
+  pendingTimer = setTimeout(async () => {
+    if (!pending) return;
+    await loadBalance();
+    if (!pending) return;
+    if (Number(ub?.total ?? 0) > pending.baseline + 1e-6) {
+      pending = null;
+      paintPending();
+      return;
+    }
+    if (Date.now() - pending.since > PENDING_GIVE_UP_MS) {
+      $('depErr').textContent = 'The deposit is on chain but Gateway has not credited it yet. '
+        + 'It will appear on its own — reopen this page later to check.';
+      pending = null;
+      paintPending();
+      return;
+    }
+    paintPending();
+    pollPending();
+  }, PENDING_POLL_MS);
+}
 
 /* ── token picker ─────────────────────────────────────────────────────────── */
 
