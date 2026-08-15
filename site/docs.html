@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Docs — Hexapus</title>
+<link rel="stylesheet" href="assets/app.css?v=20"/>
+<style>
+  .doc{display:grid;grid-template-columns:1fr 190px;gap:36px;align-items:start;max-width:1000px}
+  @media(max-width:900px){.doc{grid-template-columns:1fr}.toc{display:none}}
+  .toc{position:sticky;top:80px;display:flex;flex-direction:column;gap:2px}
+  .toc a{padding:6px 10px;border-radius:8px;font-size:14px;color:var(--muted)}
+  .toc a:hover{background:rgba(255,255,255,.05);color:var(--ink)}
+  article h2{margin:34px 0 12px;scroll-margin-top:80px}
+  article h2:first-child{margin-top:0}
+  article h3{font-size:16px;font-weight:600;margin:22px 0 8px}
+  article p{color:var(--muted);line-height:1.72;margin-bottom:12px;max-width:70ch}
+  article ul{color:var(--muted);line-height:1.72;margin:0 0 12px 20px}
+  article li{margin-bottom:5px}
+  article code{background:rgba(255,255,255,.06);padding:1px 5px;border-radius:5px;font-size:13.5px}
+  article pre{background:#0b0d11;border:1px solid var(--line);border-radius:11px;padding:14px 16px;
+    overflow-x:auto;font:400 13.5px/1.7 var(--mono);color:var(--muted);margin-bottom:14px}
+  article table{width:100%;border-collapse:collapse;margin-bottom:14px;font-size:14.5px}
+  article th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px;
+    text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+  /* app.css right-aligns tbody td for the Explore tables; prose tables read as columns of
+     text, so the numbers must start where their header starts. */
+  article td{padding:8px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.05);color:var(--muted)}
+  .callout{border-left:2px solid rgba(232,121,249,.5);padding:2px 0 2px 14px;margin:14px 0}
+  .callout p{margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body"><main>
+
+<div class="doc">
+
+  <article>
+    <h2 id="how">How Hexapus works</h2>
+    <p>
+      Hexapus is a fair-launch meme launchpad and AMM on <b>Arc</b>, Circle's chain where USDC
+      is the native gas token. Every coin starts on a bonding curve, and graduates into a
+      Uniswap v3 pool whose liquidity is locked permanently.
+    </p>
+    <p>Two things follow from Arc that no other chain gives you:</p>
+    <ul>
+      <li><b>Buying is one transaction.</b> USDC is the native asset, so a purchase is a plain
+        payable call — no approve step, no wrapped token, no second asset to hold for gas.</li>
+      <li><b>Prices are in dollars and stay there.</b> Every coin opens at a $2,000 market cap
+        and it is still $2,000 tomorrow. Launchpads quoted in SOL or ETH restate every coin's
+        value whenever the quote asset moves, even when nobody trades.</li>
+    </ul>
+
+    <h2 id="launch">Launching a coin</h2>
+    <p>Launching takes two transactions and about twelve blocks between them.</p>
+    <pre>commit   →  publishes only keccak256(creator, params, salt)
+   ↓        nothing about the coin is readable yet
+12 blocks
+   ↓
+reveal   →  deploys the token and curve, opens trading,
+            and executes your buy-in — atomically</pre>
+    <p>
+      There is nothing to configure. Every coin uses the same curve, so every launch starts on
+      exactly the same terms — 79.31% of supply sells on the curve, and the remaining 20.69%
+      seeds the pool at the price the curve closed at.
+    </p>
+    <table>
+      <tr><th>Opens at</th><th>Graduates at</th><th>Buying needed</th><th>Multiple</th></tr>
+      <tr><td>$2,000</td><td>$29,392</td><td>$6,081</td><td>14.70×</td></tr>
+    </table>
+    <p>
+      The 14.70× is set by the token ratios, not by the dollar amounts. The leftover supply is
+      sized so the pool opens at the price the curve closed at, to within 0.007% — leaving no
+      gap for anyone watching the migration to arbitrage.
+    </p>
+
+    <h2 id="antisnipe">Anti-snipe protection</h2>
+    <p>
+      Arc has a public mempool and first-come-first-served ordering, with no MEV protection.
+      A bot can see transactions and race them. Hexapus does not pretend otherwise — it
+      attacks the two halves of the problem separately.
+    </p>
+
+    <h3>Before the launch: commit–reveal</h3>
+    <p>
+      Between your commit and your reveal, the name, symbol, image, curve parameters and even
+      the contract address are all unknown, because the address derives from a secret salt.
+      A bot cannot pre-position against a coin it cannot identify.
+    </p>
+    <div class="callout">
+      <p>
+        <b>What this does not do:</b> once the reveal is in the mempool, everything is public.
+        A bot that indiscriminately buys every reveal still gets in early. Commit–reveal does
+        not stop a bot from being fast — it stops speed from being worth anything in advance.
+      </p>
+    </div>
+
+    <h3>After the launch: a decaying sell tax</h3>
+    <p>
+      Selling in the opening window costs almost everything, decaying linearly to 1% over the
+      first minutes. Buying early is <b>never blocked</b> — blocking early buyers just moves
+      the game to who gets allowlisted. Instead the opening is a terrible time to flip and a
+      fine time to hold.
+    </p>
+    <p>
+      The tax is not revenue. It stays in the curve, so it ends up in the liquidity pool at
+      graduation. <b>A snipe becomes a subsidy to everyone still holding.</b>
+    </p>
+
+    <h3>Per-wallet cap</h3>
+    <p>
+      During the opening window each wallet can buy at most 0.5% of supply, which at the
+      opening price is about <b>$10</b>. That is deliberately small: whoever gets in first
+      should not be able to take the cheapest tokens in bulk.
+      A cap alone is defeated by splitting across wallets, and no chain gives us sybil
+      resistance; it bounds one actor's blast radius rather than stopping them. The tax is the
+      part that works, because splitting wallets does not reduce it.
+    </p>
+
+    <h2 id="trading">Trading &amp; fees</h2>
+    <p>
+      Launching a coin costs <b>0.5 USDC</b>, charged when the coin is actually created — not
+      when you commit. An abandoned commit produces no coin and costs nothing but its own gas.
+    </p>
+    <p>The trading fee is <b>1%</b> of the USDC leg, on both buys and sells.</p>
+    <table>
+      <tr><th></th><th>Protocol</th><th>Creator</th><th>Referrer</th></tr>
+      <tr><td>With a referral</td><td>40%</td><td>40%</td><td>20%</td></tr>
+      <tr><td>Without</td><td>50%</td><td>50%</td><td>—</td></tr>
+    </table>
+    <p>
+      Those are shares of the 1% fee, not of the trade. On a $1,000 buy the fee is $10, split
+      $4 / $4 / $2. Fees accrue and are claimed on demand — nothing is ever pushed to you,
+      because a push-based split lets one hostile or blocked recipient break trading for
+      everybody on that coin.
+    </p>
+
+    <h2 id="creator">Creator &amp; referral fees</h2>
+    <p>
+      Creators earn 40–50% of every trading fee on their coin, for as long as it trades on the
+      curve, and half of the pool's fees after it graduates.
+    </p>
+    <p>
+      Creators may buy their own launch with <b>no cap</b>, and it is <b>publicly recorded</b>.
+      Every coin page shows "creator holds N%" whether the creator likes it or not.
+    </p>
+    <p>
+      A cap was tried and dropped, because it protects less than it looks like it does: nothing
+      stops a creator buying from a second wallet, where the same purchase is invisible. What
+      actually constrains the behaviour is the <b>sell tax</b>, which applies to the creator
+      exactly as it does to anyone else — a large opening buy dumped in the first minutes gives
+      up most of itself to the curve, and that tax stays with the remaining holders. Disclosure
+      plus a cost to dumping beats a limit that a second address defeats.
+    </p>
+    <h3>Referrals</h3>
+    <p>
+      Share a coin's referral link and you earn 20% of the trading fee from everyone who
+      arrives through it — permanently, from their first trade onward, without them needing to
+      use the link again. Attribution is single-tier: if someone you referred refers a third
+      person, that third person's fees go to them, not to you.
+    </p>
+    <div class="callout">
+      <p>
+        <b>Referrals apply to the launch phase.</b> After graduation, fees come from the pool's
+        own fee tier and accrue in aggregate — there is no per-trade record to attribute, so
+        the split becomes 50/50 protocol and creator. Any launchpad promising lifetime referral
+        revenue on an open AMM pool is either routing everything through a bypassable router,
+        or being imprecise.
+      </p>
+    </div>
+
+    <h2 id="graduation">Graduation</h2>
+    <p>
+      When the curve sells out, anyone can call <code>migrate()</code>. In one atomic
+      transaction it creates a Uniswap v3 pool at the 1% fee tier, seeds it with the raised
+      USDC and the reserved supply, and mints the position to the locker.
+    </p>
+    <p>
+      The pool opens at <b>the same price the curve closed at</b> — the supply split is chosen
+      so the two prices agree to within 0.007%, leaving no gap for anyone watching the
+      migration to arbitrage.
+    </p>
+    <h3>What "liquidity locked" means here</h3>
+    <p>The locker contract has no withdraw function. Not a timelocked one, not a multisig-gated one — none:</p>
+    <pre>no withdraw    no unlock       no emergency exit
+no owner       no admin        no upgrade path
+no timelock    no governance   no migration hatch</pre>
+    <p>
+      The only function that touches the pool is <code>collectFees()</code>, and it calls
+      Uniswap's <code>burn</code> with a hardcoded zero, which updates fee accounting without
+      removing liquidity. There is no variable anywhere in that file capable of holding a burn
+      amount. Nobody can pull the liquidity, including us.
+    </p>
+
+    <h2 id="swap">Swap</h2>
+    <p>
+      Swap lets you spend USDC from any chain on any Arc token, using Arc's <b>Unified
+      Balance</b> — your USDC across every supported chain treated as one balance, delivered
+      through Circle's App Kit on top of Circle Gateway.
+    </p>
+    <p>
+      Coins launched elsewhere are routable too, with an additional protocol fee. No creator or
+      referrer share applies to those, since Hexapus did not launch them.
+    </p>
+
+    <h2 id="swap">Swap</h2>
+    <p>
+      Moving USDC to Arc uses <b>CCTP v2</b> natively — burned on the source chain, minted on
+      Arc, no wrapped assets and no third-party bridge risk.
+    </p>
+    <p>
+      In practice you rarely need it as a separate step: the buy flow batches the Gateway mint
+      and the purchase under a single signature, so bringing money from Base and buying a coin
+      on Arc is one confirmation.
+    </p>
+  </article>
+
+  <nav class="toc">
+    <a href="#how">How Hexapus works</a>
+    <a href="#launch">Launching a coin</a>
+    <a href="#antisnipe">Anti-snipe protection</a>
+    <a href="#trading">Trading &amp; fees</a>
+    <a href="#creator">Creator &amp; referral fees</a>
+    <a href="#graduation">Graduation</a>
+    <a href="#swap">Swap</a>
+    <a href="#swap">Swap</a>
+  </nav>
+</div>
+
+</main></div></div>
+<script src="assets/config.js?v=14"></script>
+<script src="assets/web3.bundle.js?v=16"></script>
+<script src="assets/shell.js?v=17"></script>
+<script>hexaShell.mount({ active: 'docs' });</script>
+</body>
+</html>

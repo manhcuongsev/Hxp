@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Portfolio — Hexapus</title>
+<link rel="stylesheet" href="assets/app.css?v=20"/>
+<style>
+  .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);
+    border-radius:14px;overflow:hidden;margin:18px 0 26px}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi{background:var(--panel);padding:16px 18px}
+  .kpi b{display:block;font:600 22.5px var(--num);letter-spacing:-.02em;margin-bottom:5px}
+  /* The tile's own label, not every span inside it. The P&L figure is a span too, and this
+     rule was outranking .up/.down and painting a gain or a loss dim grey. */
+  .kpi > span{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.08em}
+  .kpi .sub{font-size:12.5px;color:var(--dim);margin-top:5px;text-transform:none;letter-spacing:0}
+  /* P&L is a KPI before it is a table cell. The shared renderer dresses it for a row — 13.5px,
+     dimmed when flat — which beside the other four tiles read as a footnote rather than a
+     headline figure. Size and weight come from the tile; the percentage stays a suffix. */
+  .kpi b .num{font:inherit}
+  .kpi b .num span{font-size:13.5px}
+
+  .sec{margin-bottom:26px}
+  /* Count sits against the title as a pill, not pushed to the far edge — at this width the
+     two ends of the row read as unrelated. */
+  .sec-hd{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .sec-hd h2{font-size:18.5px;letter-spacing:-.02em}
+  .sec-hd .n{font:600 12.5px var(--num);color:var(--muted);line-height:1;
+    min-width:24px;padding:5px 9px;border-radius:999px;text-align:center;
+    background:rgba(255,255,255,.07);border:1px solid var(--line)}
+  .sec-hd .n:empty{display:none}
+  .empty{padding:22px;color:var(--muted);font-size:14.5px;line-height:1.6}
+
+  .pill-ic{display:grid;place-items:center;padding:0;color:var(--dim);line-height:0}
+  .pill-ic svg{width:13px;height:13px}
+  .pill-ic:hover{color:#e879f9}
+  .pill-ic.spin svg{animation:spin .6s linear}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .unit{font-style:normal;font-size:13px;font-weight:500;color:var(--dim);margin-left:3px}
+  .addr-pill{display:inline-flex;align-items:center;gap:8px;font:500 13.5px var(--mono);
+    color:var(--muted);padding:5px 11px;border-radius:999px;
+    background:rgba(255,255,255,.04);border:1px solid var(--line)}
+
+  .ub{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+  @media(max-width:900px){.ub{grid-template-columns:1fr}}
+  .chainrow{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:14.5px;
+    border-bottom:1px solid rgba(255,255,255,.05)}
+  .chainrow .dot2{width:8px;height:8px;border-radius:50%;background:var(--dim)}
+  /* Two figures per row, so both columns need a fixed width or the decimals wander. */
+  .chainrow .mono,.chainhd span:not(.dot2){width:82px;text-align:right;flex:0 0 82px;
+    font:600 13px var(--num)}
+  .chainhd{border-bottom-color:transparent;padding-bottom:2px}
+  .chainhd span{font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim);
+    font-weight:400}
+  .soon{opacity:.45}
+  .warn2{font-size:13.5px;color:#ffdcae;background:rgba(255,220,174,.07);
+    border:1px solid rgba(255,220,174,.2);border-radius:10px;padding:10px 12px;margin-top:14px;line-height:1.55}
+</style>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body"><main>
+
+  <div style="display:flex;align-items:baseline;gap:14px;flex-wrap:wrap">
+    <h1 style="font-size:28px;letter-spacing:-.025em">Portfolio</h1>
+    <span class="addr-pill">
+      <span id="addr">not connected</span>
+      <button class="pill-ic" id="copyAddr" title="Copy address" aria-label="Copy address">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="7.4" y="7.4" width="9.2" height="9.2" rx="2"/>
+          <path d="M13.4 4.6a1.8 1.8 0 0 0-1.8-1.2H5.4a2 2 0 0 0-2 2v6.2a1.8 1.8 0 0 0 1.2 1.8"/>
+        </svg>
+      </button>
+      <button class="pill-ic" id="refreshBal" title="Refresh balances" aria-label="Refresh balances">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6"/><path d="M16.6 3.4v3.2h-3.2"/>
+        </svg>
+      </button>
+    </span>
+  </div>
+
+  <div id="disconnected" class="glass empty" style="margin-top:18px">
+    Connect a wallet to see what you hold, what you launched, and what you can claim.
+  </div>
+
+  <div id="live" hidden>
+    <div class="kpis glass">
+      <div class="kpi"><b id="kBal">—</b><span>USDC on Arc</span><div class="sub">gas and trading, one balance</div></div>
+      <div class="kpi"><b id="kValue">—</b><span>Position value</span><div class="sub" id="kValueSub">—</div></div>
+      <div class="kpi"><b id="kPnl">—</b><span>Unrealised P&amp;L</span><div class="sub" id="kPnlSub">vs. what you paid here</div></div>
+      <div class="kpi"><b id="kCreated">—</b><span>Coins launched</span><div class="sub" id="kCreatedSub">—</div></div>
+      <div class="kpi"><b id="kFees">—</b><span>Claimable fees</span>
+        <button class="btn" id="claim" style="margin-top:8px;padding:5px 12px;font-size:12.5px" disabled>Claim</button></div>
+    </div>
+    <div class="note" id="claimerr" style="color:#ff6b81;margin:-14px 0 20px"></div>
+
+    <section class="sec">
+      <div class="sec-hd"><h2>Positions</h2><span class="n" id="nPos"></span></div>
+      <div class="tablewrap" id="posWrap" hidden>
+        <table>
+          <thead><tr>
+            <th>Coin</th><th>Balance</th><th>Price</th><th>Value</th>
+            <th>Cost</th><th>P&amp;L</th><th></th>
+          </tr></thead>
+          <tbody id="posBody"></tbody>
+        </table>
+      </div>
+      <div class="glass empty" id="posEmpty">
+        You do not hold any Hexapus coin yet. <a href="explore.html">Explore</a> what is live.
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-hd"><h2>Created coins</h2><span class="n" id="nCreated"></span></div>
+      <div class="tablewrap" id="crWrap" hidden>
+        <table>
+          <thead><tr>
+            <th>Coin</th><th>Status</th><th>Market cap</th><th>24h volume</th><th>Trades</th><th></th>
+          </tr></thead>
+          <tbody id="crBody"></tbody>
+        </table>
+      </div>
+      <div class="glass empty" id="crEmpty">
+        You have not launched a coin yet. <a href="create.html">Create one</a> — it costs 0.5 USDC.
+      </div>
+    </section>
+
+    <section class="sec ub">
+      <div class="glass" style="padding:20px">
+        <h2 style="font-size:15px;font-weight:620;margin-bottom:4px">Balance</h2>
+        <div class="note" style="margin-bottom:14px">
+          Where this address holds USDC. <b>Wallet</b> is what you can spend on that chain
+          today; <b>unified</b> is the part already deposited into Circle Gateway, which a coin
+          on Arc can be bought with in a single signature.
+        </div>
+        <div class="chainrow chainhd">
+          <span class="dot2" style="visibility:hidden"></span><span style="flex:1"></span>
+          <span>Wallet</span><span>Unified</span>
+        </div>
+        <div id="ubTotalRow" class="chainrow" style="border-bottom-width:2px">
+          <span class="dot2" style="background:#e879f9"></span><b>Total</b>
+          <span style="flex:1"></span>
+          <span class="mono" id="wTotal">—</span><span class="mono" id="ubTotal">—</span>
+        </div>
+        <div id="ubRows"></div>
+        <div class="note" style="margin-top:12px">
+          Only the unified column can be spent from any chain at once. Move wallet USDC across
+          by depositing it on the <a href="swap.html">Swap</a> page.
+        </div>
+      </div>
+
+      <div class="glass" style="padding:20px">
+        <h2 style="font-size:15px;font-weight:620;margin-bottom:4px">How fees reach you</h2>
+        <div class="note" style="line-height:1.7">
+          Creator, protocol and referral earnings accrue in the vault and are pulled on demand.
+          Nothing is ever pushed to you — on Arc a push-based split lets one blocked recipient
+          break trading for everyone on that coin.
+          <br><br>
+          Creators earn 40–50% of the 1% trading fee for as long as the coin trades on its
+          curve, then half of the pool's fees after it graduates. Referral shares apply to the
+          launch phase only.
+        </div>
+      </div>
+    </section>
+  </div>
+
+</main></div></div>
+
+<script src="assets/config.js?v=14"></script>
+<script src="assets/web3.bundle.js?v=16"></script>
+<script src="assets/swap.bundle.js?v=6"></script>
+<script src="assets/shell.js?v=17"></script>
+<script>
+hexaShell.mount({ active: 'profile' });
+
+const HEXA_API = window.HEXA_CONFIG?.hexaApi || localStorage.hexaApi || 'http://127.0.0.1:8880';
+
+/** How long to wait before asking again when the feed did not answer. */
+const RETRY_MS = 4000;
+let retryTimer = null;
+const $ = (id) => document.getElementById(id);
+const usd = (n) => n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M'
+                 : n >= 1e3 ? '$' + (n / 1e3).toFixed(1) + 'K'
+                 : n >= 1 ? '$' + n.toFixed(2)
+                 : n > 0 ? '$' + n.toFixed(2) : '$0';
+const qty = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : n.toFixed(0);
+const price = (n) => n >= 1e-6 ? '$' + n.toFixed(6) : n > 0 ? '$' + n.toExponential(3) : '—';
+// Buying and immediately valuing the same position leaves a sub-cent rounding residue, and
+// rendering that as "-$0.0000" reads as a loss the user did not take. Below what the format
+// can show, it is flat.
+const pnlCell = (v, pct) => {
+  if (v === null) return '<span class="num">—</span>';
+  if (Math.abs(v) < 5e-5) return '<span class="num">$0.00</span>';
+  return `<span class="num ${v > 0 ? 'up' : 'down'}">${v > 0 ? '+' : ''}${usd(Math.abs(v)).replace('$', v < 0 ? '-$' : '$')}` +
+    `${pct === null ? '' : ` <span style="opacity:.7">(${(pct * 100).toFixed(1)}%)</span>`}</span>`;
+};
+
+/**
+ * Every Gateway chain gets a row, not only the ones holding something — the point of the card is
+ * to show the whole surface the balance is drawn from, and a chain at zero is information too.
+ */
+async function loadUnified() {
+  const account = hexa.currentAccount();
+  if (!account) return;
+  // Both readings, side by side: the wallet column is what makes a 0.00 unified balance
+  // legible — the money is visibly there, it just has not been deposited yet.
+  const [ubRes, walletRes] = await Promise.allSettled([
+    hexaSwap.balances(), hexaSwap.walletUsdc(account),
+  ]);
+  const ub = ubRes.status === 'fulfilled' ? ubRes.value : null;
+  const w = walletRes.status === 'fulfilled' ? walletRes.value : {};
+  const held = new Map((ub?.byChain ?? []).map((r) => [r.chain, Number(r.amount)]));
+
+  $('ubTotal').textContent = ub ? Number(ub.total).toFixed(2) : '—';
+  const wSum = Object.values(w).reduce((a, n) => a + n, 0);
+  $('wTotal').textContent = Object.keys(w).length ? wSum.toFixed(2) : '—';
+
+  $('ubRows').innerHTML = hexaSwap.CHAINS.map((c) => {
+    const u = held.get(c.chain) ?? 0, ww = w[c.chain];
+    const live = u > 0 || ww > 0;
+    return `<div class="chainrow"${live ? '' : ' style="opacity:.45"'}>
+      <span class="dot2"${live ? ' style="background:#5fe3a1"' : ''}></span>${c.name}
+      <span style="flex:1"></span>
+      <span class="mono">${ww === undefined ? '—' : ww.toFixed(2)}</span>
+      <span class="mono">${u > 0 ? u.toFixed(2) : '—'}</span></div>`;
+  }).join('');
+}
+
+const coinCell = (r) => `<div class="tk"><span class="av">${hexaShell.art(r.token, r.image, { eager: true })}</span>
+  <div><b>${r.symbol ?? '???'}</b><br><span class="pair">${r.name ?? ''}</span></div></div>`;
+const openBtn = (r) => r.curve
+  ? `<a class="btn" style="padding:4px 10px;font-size:12px" href="coin.html?token=${r.token}&curve=${r.curve}">Open</a>`
+  : '';
+
+document.addEventListener('hexa:account', (e) => load(e.detail));
+
+async function load(account) {
+  if (!account) return;
+  $('addr').textContent = account;
+  $('disconnected').hidden = true;
+  $('live').hidden = false;
+
+  // One number, not two: on Arc the native balance and the USDC ERC-20 balance are the same
+  // funds seen two ways, and showing both would double-count them.
+  const bal = await hexa.pub.getBalance({ address: account });
+  $('kBal').innerHTML = usd(Number(hexa.formatEther(bal))) + ' <i class="unit">USDC</i>';
+
+  const owed = await hexa.read(hexa.addresses.vault, 'FeeVault', 'owed', [account]).catch(() => 0n);
+  $('kFees').textContent = usd(Number(hexa.formatUnits(owed, 6)));
+  $('claim').disabled = owed === 0n;
+
+  let p;
+  try {
+    p = await (await fetch(`${HEXA_API}/portfolio?address=${account}`, { cache: 'no-store' })).json();
+  } catch {
+    // One word, and it keeps trying. The wallet-side figures above stay on screen — those come
+    // straight from the chain and do not need the feed at all.
+    for (const id of ['kValue', 'kPnl', 'kCreated']) $(id).textContent = '—';
+    $('kValueSub').textContent = 'Loading…';
+    $('posEmpty').textContent = 'Loading…';
+    $('crEmpty').textContent = 'Loading…';
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => load(account), RETRY_MS);
+    return;
+  }
+  clearTimeout(retryTimer);
+  loadUnified();
+
+  const invested = p.totals.invested, value = p.totals.positionValue;
+  const pnl = invested > 0 ? value - invested : null;
+  $('kValue').textContent = usd(value);
+  $('kValueSub').textContent = `${p.holdings.length} coin${p.holdings.length === 1 ? '' : 's'} held`;
+  $('kPnl').innerHTML = pnl === null ? '—' : pnlCell(pnl, invested > 0 ? pnl / invested : null);
+  $('kPnlSub').textContent = invested > 0 ? `cost ${usd(invested)}` : 'nothing bought here yet';
+  $('kCreated').textContent = p.created.length;
+  $('kCreatedSub').textContent = p.created.filter((c) => c.phase === 'GRADUATED').length + ' graduated';
+
+  // positions
+  $('nPos').textContent = p.holdings.length || '';
+  $('posWrap').hidden = !p.holdings.length;
+  $('posEmpty').hidden = !!p.holdings.length;
+  $('posBody').innerHTML = p.holdings.map((r) => `<tr>
+    <td>${coinCell(r)}</td>
+    <td class="num">${qty(r.balance)}</td>
+    <td class="num">${price(r.price)}</td>
+    <td class="num">${usd(r.value)}</td>
+    <td class="num">${r.invested > 0 ? usd(r.invested) : '—'}</td>
+    <td>${pnlCell(r.pnl, r.pnlPct)}</td>
+    <td>${openBtn(r)}</td></tr>`).join('');
+
+  // created
+  $('nCreated').textContent = p.created.length || '';
+  $('crWrap').hidden = !p.created.length;
+  $('crEmpty').hidden = !!p.created.length;
+  $('crBody').innerHTML = p.created.map((r) => `<tr>
+    <td>${coinCell(r)}</td>
+    <td><span class="tag ${r.phase === 'GRADUATED' ? 'v3' : 'hx'}">${r.phase}</span></td>
+    <td class="num">${r.mcap === null ? '—' : usd(r.mcap)}</td>
+    <td class="num">${r.vol24h ? usd(r.vol24h) : '—'}</td>
+    <td class="num">${r.txns}</td>
+    <td>${openBtn(r)}</td></tr>`).join('');
+}
+
+$('copyAddr').addEventListener('click', async () => {
+  const a = hexa.currentAccount(); if (!a) return;
+  await navigator.clipboard.writeText(a);
+  const b = $('copyAddr'); b.title = 'Copied';
+  setTimeout(() => (b.title = 'Copy address'), 1400);
+});
+
+// Balances move when a trade lands elsewhere, and nothing pushes that to an open tab.
+$('refreshBal').addEventListener('click', async () => {
+  const b = $('refreshBal'); b.classList.add('spin');
+  await load(hexa.currentAccount()).catch(() => {});
+  setTimeout(() => b.classList.remove('spin'), 600);
+});
+
+$('claim').addEventListener('click', async () => {
+  const e = $('claimerr'); e.textContent = '';
+  const btn = $('claim'); btn.disabled = true; btn.textContent = 'Confirm…';
+  try {
+    await hexa.write(hexa.addresses.vault, 'FeeVault', 'claim', []);
+    await load(hexa.currentAccount());
+  } catch (ex) {
+    e.textContent = ex.shortMessage || ex.message;
+    btn.disabled = false;
+  }
+  btn.textContent = 'Claim';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+{
+  "name": "hexapus",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hexapus — fair-launch meme launchpad and AMM on Arc, where USDC is the gas.",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test indexer/trending.test.ts",
+    "test:integration": "node contracts/compile.mjs && node test/integration.mjs",
+    "contracts:build": "node contracts/compile.mjs",
+    "contracts:sim": "node contracts/sim.mjs",
+    "deploy": "node contracts/compile.mjs && node scripts/deploy.mjs",
+    "demo": "node scripts/demo.mjs",
+    "graduate": "node scripts/graduate.mjs",
+    "site:build": "node contracts/compile.mjs && node scripts/build-site.mjs",
+    "site": "node scripts/build-site.mjs && python -m http.server 4477 --directory site --bind 127.0.0.1",
+    "indexer": "tsx indexer/node.ts",
+    "indexer:hexa": "cross-env INDEXER_ROLE=hexa tsx indexer/node.ts",
+    "indexer:network": "cross-env INDEXER_ROLE=network tsx indexer/node.ts"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@circle-fin/adapter-viem-v2": "^1.15.1",
+    "@circle-fin/app-kit": "^1.12.0",
+    "better-sqlite3": "^13.0.2",
+    "dotenv": "16.4.5",
+    "express": "^5.2.1",
+    "lightweight-charts": "^5.2.1",
+    "viem": "2.55.2"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "22.9.0",
+    "@uniswap/v3-core": "^1.0.1",
+    "cross-env": "^10.1.0",
+    "esbuild": "^0.28.2",
+    "solc": "^0.8.28",
+    "tsx": "4.19.2",
+    "typescript": "5.6.3"
+  }
+}

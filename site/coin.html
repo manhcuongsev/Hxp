@@ -1,0 +1,1020 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Coin — Hexapus</title>
+<link rel="stylesheet" href="assets/app.css?v=20"/>
+<style>
+  body main{padding:16px 18px 40px;max-width:1680px}
+
+  .term{display:grid;grid-template-columns:minmax(0,1fr) 356px;gap:14px;align-items:start}
+  @media(max-width:1180px){.term{grid-template-columns:1fr}}
+
+  .navbar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .navbar .back{display:grid;place-items:center;width:34px;height:34px;flex:0 0 34px;border-radius:10px;
+    color:var(--muted);background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .navbar .back:hover{color:var(--ink);border-color:rgba(232,121,249,.4)}
+  .navbar .back svg{width:17px;height:17px}
+  .navbar .searchbox{max-width:430px}
+
+  /* ── header ─────────────────────────────────────────── */
+  .hd{display:flex;gap:13px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+  .holders-chip{font-size:13px;color:var(--dim);font-weight:400;margin-left:2px}
+  .hd .art{width:56px;height:56px;border-radius:13px;display:grid;place-items:center;font-size:30px;
+    flex:0 0 auto;background:linear-gradient(150deg,#1b1420,#0c0e13);border:1px solid var(--line);
+    background-size:cover;background-position:center;overflow:hidden}
+  .hd h1{font-size:24px;letter-spacing:-.02em;line-height:1.2}
+  .hd .sub{color:var(--dim);font-size:13.5px;margin-top:3px;display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+  /* Label above the figure, the way every terminal prints it — the number is what you scan
+     for, so it gets the last word rather than being introduced by a caption underneath. */
+  .mc{margin-left:auto;text-align:right;line-height:1.2}
+  .mc > span{display:block;font-size:13px;color:var(--dim);margin-bottom:1px}
+  .mc b{display:block;font:700 30px var(--num);letter-spacing:-.025em}
+  .mc #lastpx{font-size:12.5px;color:var(--dim);margin-top:1px}
+  .chip{display:inline-flex;align-items:center;gap:5px;font:400 12px var(--num);color:var(--muted);
+    padding:3px 8px;border-radius:7px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .chip:hover{color:var(--ink)}
+  .copy{display:grid;place-items:center;padding:0;color:var(--dim);line-height:0}
+  .copy svg{width:13px;height:13px}
+  .copy:hover{color:#e879f9}
+
+  /* socials */
+  .socials{display:inline-flex;gap:6px;vertical-align:2px;margin-left:4px}
+  .socials a,.socials span.off{position:relative;display:grid;place-items:center;width:24px;height:24px;
+    border-radius:7px;color:var(--dim);background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .socials a:hover{color:var(--ink);border-color:rgba(232,121,249,.4)}
+  .socials span.off{opacity:.4;cursor:default}
+  .socials svg{width:13px;height:13px}
+  .socials span.off:hover .peek,.socials span.off:focus-visible .peek{
+    opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .socials .peek{position:absolute;top:calc(100% + 9px);left:50%;transform:translateX(-50%) translateY(-4px);
+    width:238px;padding:15px;border-radius:14px;background:#14161c;border:1px solid var(--line);
+    box-shadow:0 22px 50px -18px rgba(0,0,0,.85);opacity:0;pointer-events:none;transition:opacity .14s,transform .14s;
+    text-align:center;z-index:40;cursor:default}
+  .socials a:hover .peek,.socials a:focus-visible .peek{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+  .peek .av{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;margin:0 auto 9px;
+    font:700 15px var(--num);color:var(--muted);background:rgba(255,255,255,.07);border:1px solid var(--line)}
+  .peek b{display:block;font-size:14px;color:var(--ink)}
+  .peek span{display:block;font-size:12.5px;color:var(--dim);margin-bottom:12px;word-break:break-all}
+  .peek .go{display:block;padding:8px;border-radius:999px;font-size:12.5px;font-weight:600;
+    color:var(--ink);background:rgba(255,255,255,.07);border:1px solid var(--line)}
+  .peek .go:hover{background:rgba(232,121,249,.16);border-color:rgba(232,121,249,.4)}
+
+  /* dropdown menus */
+  .menu{position:relative}
+  .menu .trigger{display:inline-flex;align-items:center;gap:6px}
+  .menu .trigger svg{width:15px;height:15px}
+  .menu .trigger i{font-style:normal;font-size:9px;opacity:.7}
+  .menu .pop{position:absolute;top:calc(100% + 6px);left:0;min-width:186px;padding:6px;z-index:50;
+    background:#14161c;border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 20px 46px -16px rgba(0,0,0,.85)}
+  .menu .pop[hidden]{display:none}
+  .menu .pop button{display:block;width:100%;text-align:left;padding:8px 11px;border-radius:8px;
+    font-size:13.5px;color:var(--muted)}
+  .menu .pop button:hover{background:rgba(255,255,255,.06);color:var(--ink)}
+  .menu .pop button[aria-selected=true]{background:rgba(232,121,249,.14);color:#e879f9}
+  .pop-g{padding:9px 11px 5px;font-size:10.5px;text-transform:uppercase;letter-spacing:.09em;color:var(--dim)}
+  .pop-sep{height:1px;background:var(--line);margin:5px 0}
+
+  /* ── chart ──────────────────────────────────────────── */
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:13px}
+  /* Flat toolbar: no chrome at rest, a wash of colour under the cursor. Boxing every control
+     turned a strip of five into five competing objects. */
+  .chart-hd{display:flex;align-items:center;gap:2px;padding:7px 9px;flex-wrap:wrap}
+  .chart-hd .bar-sep{width:1px;height:17px;background:var(--line);margin:0 6px}
+  .seg2{display:flex;gap:2px}
+  .seg2 button,.ghost{padding:6px 10px;border-radius:8px;border:0;background:transparent;
+    font:600 13px var(--num);color:var(--muted);transition:background .12s,color .12s}
+  .seg2 button:hover,.ghost:hover{background:rgba(255,255,255,.07);color:var(--ink)}
+  .seg2 button[aria-selected=true]{color:#e879f9}
+  .ghost[aria-pressed=true]{color:var(--ink)}
+  #chart{width:100%;height:352px}
+  .chart-empty{padding:70px 20px;text-align:center;color:var(--dim);font-size:14.5px;line-height:1.7}
+
+  /* ── stats ──────────────────────────────────────────── */
+  .stat{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;margin-bottom:4px}
+  .stat span{color:var(--dim)}
+  .stat b{font:600 14px var(--num)}
+  .split{height:5px;border-radius:99px;overflow:hidden;display:flex;margin:3px 0 13px;background:rgba(255,255,255,.06)}
+  .split i{display:block;height:100%}
+  .split .g{background:var(--up)} .split .r{background:var(--down)}
+  /* Gold while the curve is still filling, brand purple once it has graduated. */
+  #progress{background:linear-gradient(90deg,#f0a91c,#ffd257);border-radius:99px;
+    transition:width .55s ease-out}
+  #progress.grad{background:linear-gradient(90deg,#f078f0,#a848f0)}
+  /* Only this track stops clipping — .split is shared with the buy/sell bar, which needs its
+     clip. The fill rounds its own ends, so nothing changes but the sparks' freedom to leave. */
+  .split-curve{overflow:visible}
+
+  /* ── trade panel ────────────────────────────────────── */
+  .tabs2{display:flex;gap:5px;margin-bottom:13px}
+  .tabs2 button{flex:1;padding:9px;border-radius:9px;font-size:15px;font-weight:650;color:var(--muted);border:1px solid transparent}
+  .tabs2 #tbuy[aria-selected=true]{background:rgba(95,227,161,.14);color:var(--up);border-color:rgba(95,227,161,.3)}
+  .tabs2 #tsell[aria-selected=true]{background:rgba(255,107,129,.14);color:var(--down);border-color:rgba(255,107,129,.3)}
+  /* The action button carries the side's colour, so buying and selling never look alike. */
+  .side-btn{border:0;color:#08131c;font-weight:700;font-size:15px;
+    background:linear-gradient(180deg,#6ff0b2,#33c882)}
+  .side-btn:hover{filter:brightness(1.07);background:linear-gradient(180deg,#7df5bd,#3ad48c)}
+  .side-btn.sell{color:#2a0710;background:linear-gradient(180deg,#ff8b9f,#e8465f)}
+  .side-btn.sell:hover{background:linear-gradient(180deg,#ff9dae,#f0526b)}
+  .side-btn:disabled{filter:grayscale(.5) brightness(.8);cursor:default}
+  .amt{width:100%;padding:13px 14px;border-radius:11px;font:700 24px var(--num);color:var(--ink);
+    background:rgba(255,255,255,.04);border:1px solid var(--line);outline:none;text-align:right}
+  .amt:focus{border-color:rgba(232,121,249,.5)}
+  .presets{display:flex;gap:6px;margin:9px 0 11px}
+  .presets button{flex:1;padding:6px;border-radius:8px;font:600 13px var(--num);color:var(--muted);
+    background:rgba(255,255,255,.04);border:1px solid var(--line)}
+  .presets button:hover{color:var(--ink);border-color:rgba(232,121,249,.4)}
+  .slip{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:11px}
+  .slip > span{font-size:12.5px;color:var(--dim)}
+  .slip .seg2 button{padding:4px 8px;font-size:11.5px}
+  .slip #slipCustom{width:62px;padding:4px 7px;border-radius:8px;font:600 11.5px var(--num);
+    color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);outline:none}
+  .slip #slipCustom:focus{border-color:rgba(232,121,249,.55)}
+  .slip #slipCustom::placeholder{color:var(--dim);font-weight:400}
+  .balrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-size:12.5px}
+  .balrow span{color:var(--dim)}
+  .balrow button{padding:2px 8px;border-radius:6px;font:600 11px var(--num);color:var(--muted);
+    background:rgba(255,255,255,.06);border:1px solid var(--line)}
+  .balrow button:hover{color:var(--ink);border-color:rgba(232,121,249,.4)}
+  .qrows{margin-bottom:11px}
+  .qrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;
+    font-size:12.5px;padding:3px 0}
+  .qrow span{color:var(--dim)}
+  .qrow b{font:600 13px var(--num)}
+  .quote{font-size:12.5px;color:var(--muted);line-height:1.6}
+  .quote:empty{display:none}
+  .quote b{color:var(--ink);font-family:var(--num)}
+  .warn2{font-size:13px;color:#ffdcae;background:rgba(255,220,174,.07);border:1px solid rgba(255,220,174,.2);
+    border-radius:10px;padding:9px 11px;margin-top:11px;line-height:1.55}
+
+  /* ── tables ─────────────────────────────────────────── */
+  .duo2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px;margin-top:14px}
+  @media(max-width:1080px){.duo2{grid-template-columns:1fr}}
+  .card-hd{padding:10px 13px;border-bottom:1px solid var(--line);font-size:14px;font-weight:620;
+    display:flex;justify-content:space-between;align-items:center}
+  .card-hd{gap:9px;justify-content:flex-start}
+  .card-hd .pill{font:600 12px var(--num);color:var(--muted);line-height:1;font-weight:600;
+    min-width:23px;padding:5px 8px;border-radius:999px;text-align:center;
+    background:rgba(255,255,255,.07);border:1px solid var(--line)}
+  .card-hd .pill:empty{display:none}
+  .tbl{max-height:334px;overflow-y:auto;overflow-x:hidden;scrollbar-width:none}
+  .tbl::-webkit-scrollbar{width:0;height:0}
+  /* app.css pins every table to min-width:1180px for the Monitoring grid. Inside a 500px
+     panel that forced a horizontal scrollbar and hid all but the first two columns. */
+  .tbl table{width:100%;min-width:0;border-collapse:collapse;font-size:14px;table-layout:fixed}
+  .tbl th{position:sticky;top:0;background:var(--panel);text-align:right;padding:8px 10px;z-index:1;
+    font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--dim);border-bottom:1px solid var(--line)}
+  .tbl th:first-child,.tbl td:first-child{text-align:left;position:static;background:none}
+  .tbl td{text-align:right;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .tbl tr:hover td{background:rgba(255,255,255,.025)}
+  .who{font:400 13px var(--mono);color:var(--muted)}
+  a.who:hover{color:#e879f9;text-decoration:underline}
+  .badge{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    padding:1px 5px;border-radius:5px;margin-left:5px;vertical-align:1px;
+    background:rgba(232,121,249,.16);color:#e879f9;border:1px solid rgba(232,121,249,.32)}
+  .empty2{padding:26px 14px;text-align:center;color:var(--dim);font-size:14px;line-height:1.7}
+
+  .reflink{display:flex;gap:8px;margin-top:9px}
+  .reflink input{flex:1;min-width:0;padding:8px 10px;border-radius:9px;font:400 12px var(--mono);color:var(--muted);
+    background:rgba(255,255,255,.04);border:1px solid var(--line);outline:none}
+</style>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body"><main>
+
+  <div id="loading" class="muted">Loading coin…</div>
+
+  <!-- Back and search sit above the coin, the way a terminal keeps you one click from the list. -->
+  <div class="navbar">
+    <a class="back" href="explore.html" title="Back to Explore" aria-label="Back to Explore">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12.5 4.5 7 10l5.5 5.5"/>
+      </svg>
+    </a>
+    <a class="searchbox" href="explore.html#search">
+      <span>⌕</span><span>Search for coins and addresses…</span><span class="kbd">⌘K</span>
+    </a>
+  </div>
+
+  <div id="coin" hidden>
+    <div class="hd">
+      <div class="art" id="art">🐙</div>
+      <div>
+        <h1>
+          <span id="sym">—</span>
+          <span class="dim" style="font-weight:400;font-size:15px" id="nm"></span>
+          <span class="holders-chip" id="holdersChip"></span>
+          <span class="socials" id="socials"></span>
+        </h1>
+        <div class="sub">
+          <span id="phase" class="tag hx">—</span>
+          <span class="chip">
+            <a id="tokenlink" target="_blank" rel="noopener"></a>
+            <button class="copy" id="copyaddr" title="Copy token address" aria-label="Copy token address">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="7.4" y="7.4" width="9.2" height="9.2" rx="2"/>
+                <path d="M13.4 4.6a1.8 1.8 0 0 0-1.8-1.2H5.4a2 2 0 0 0-2 2v6.2a1.8 1.8 0 0 0 1.2 1.8"/>
+              </svg>
+            </button>
+          </span>
+          <span class="chip" id="agechip">—</span>
+        </div>
+      </div>
+      <div class="mc">
+        <span>Market cap</span>
+        <b id="mcap">—</b>
+        <div id="lastpx">—</div>
+      </div>
+    </div>
+
+    <div class="term">
+      <div>
+        <div class="card">
+          <div class="chart-hd">
+            <div class="menu" id="mInterval">
+              <button class="ghost trigger" aria-expanded="false"><b id="intervalLabel">5m</b> <i>▾</i></button>
+              <div class="pop" hidden>
+                <div class="pop-g">Seconds</div>
+                <button data-i="1">1 second</button>
+                <button data-i="15">15 seconds</button>
+                <button data-i="30">30 seconds</button>
+                <div class="pop-g">Minutes</div>
+                <button data-i="60">1 minute</button>
+                <button data-i="300" aria-selected="true">5 minutes</button>
+                <button data-i="900">15 minutes</button>
+                <button data-i="1800">30 minutes</button>
+                <div class="pop-g">Hours</div>
+                <button data-i="3600">1 hour</button>
+                <button data-i="14400">4 hours</button>
+              </div>
+            </div>
+
+            <div class="menu" id="mType">
+              <button class="ghost trigger" aria-expanded="false" title="Chart type">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">
+                  <path d="M6 3v14M6 6h0M14 3v14"/><rect x="4.2" y="6" width="3.6" height="8" rx="1"/>
+                  <rect x="12.2" y="4.5" width="3.6" height="8" rx="1"/>
+                </svg> <i>▾</i>
+              </button>
+              <div class="pop" hidden>
+                <button data-t="bars">Bars</button>
+                <button data-t="candles" aria-selected="true">Candles</button>
+                <button data-t="hollow">Hollow candles</button>
+                <button data-t="hlc">HLC bars</button>
+                <div class="pop-sep"></div>
+                <button data-t="line">Line</button>
+                <button data-t="markers">Line with markers</button>
+                <button data-t="step">Step line</button>
+                <div class="pop-sep"></div>
+                <button data-t="area">Area</button>
+              </div>
+            </div>
+
+            <span class="bar-sep"></span>
+            <button class="ghost" id="volToggle" aria-pressed="true">Volume</button>
+            <button class="ghost" id="fitBtn" title="Reset zoom">Reset</button>
+            <span class="bar-sep"></span>
+            <div class="seg2" id="scales">
+              <button data-s="price">Price</button>
+              <button data-s="mcap" aria-selected="true">MCap</button>
+            </div>
+
+          </div>
+          <div id="chart"></div>
+          <div class="chart-empty" id="chartempty" hidden></div>
+        </div>
+
+        <div class="duo2">
+          <div class="card">
+            <div class="card-hd">Holders <span class="pill" id="nholders"></span></div>
+            <div class="tbl">
+              <table>
+                <thead><tr>
+                  <th style="width:38%">Holder</th><th>Position</th><th>PnL</th><th style="width:19%">% supply</th>
+                </tr></thead>
+                <tbody id="holders"></tbody>
+              </table>
+            </div>
+            <div class="empty2" id="holdersempty" hidden></div>
+          </div>
+
+          <div class="card">
+            <div class="card-hd">Trades <span class="pill" id="ntrades"></span></div>
+            <div class="tbl">
+              <table>
+                <thead><tr>
+                  <th style="width:30%">Account</th><th style="width:13%">Type</th>
+                  <th>Amount</th><th id="thTok">Token</th><th style="width:14%">Time</th>
+                </tr></thead>
+                <tbody id="trades"></tbody>
+              </table>
+            </div>
+            <div class="empty2" id="tradesempty" hidden></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="card" style="padding:15px">
+          <div class="tabs2">
+            <button id="tbuy" aria-selected="true">Buy</button>
+            <button id="tsell" aria-selected="false">Sell</button>
+          </div>
+          <div class="balrow">
+            <span id="balLabel">Balance</span>
+            <button id="maxBtn" title="Use the whole balance">MAX</button>
+          </div>
+          <input class="amt" id="amount" type="number" min="0" step="any" placeholder="0.00"/>
+          <div class="presets" id="presets"></div>
+          <div class="slip">
+            <span>Max slippage</span>
+            <div class="seg2" id="slips">
+              <button data-p="0.5">0.5%</button>
+              <button data-p="1" aria-selected="true">1%</button>
+              <button data-p="3">3%</button>
+              <input id="slipCustom" type="number" min="0.1" max="50" step="0.1"
+                     placeholder="custom" aria-label="Custom slippage in percent"/>
+            </div>
+          </div>
+          <div class="qrows">
+            <div class="qrow"><span>You receive (est.)</span><b id="qOut">—</b></div>
+            <div class="qrow"><span>Min received (after slippage)</span><b id="qMin">—</b></div>
+            <div class="qrow"><span>Price impact</span><b id="qImpact">—</b></div>
+          </div>
+          <div class="quote" id="quote"></div>
+          <button class="btn btn-w side-btn" id="trade" style="padding:12px">Connect wallet</button>
+          <div id="notice"></div>
+          <div class="note" id="terr" style="color:#ff6b81;margin-top:9px"></div>
+        </div>
+
+        <div class="card" style="padding:15px;margin-top:14px">
+          <div class="card-hd" style="padding:0 0 9px;margin-bottom:10px">
+            Stats
+            <span class="seg2" id="statframes" style="margin-left:auto">
+              <button data-w="5m">5m</button>
+              <button data-w="1h" aria-selected="true">1h</button>
+              <button data-w="6h">6h</button>
+              <button data-w="24h">24h</button>
+            </span>
+            <span hidden id="statwin">1h</span>
+          </div>
+          <div class="stat"><span>Price change</span><b id="sChange">—</b></div>
+          <div class="stat"><span>Volume</span><b id="sVol">—</b></div>
+          <div class="stat"><span id="sBuysLbl">Buys</span><b id="sSells">—</b></div>
+          <div class="split"><i class="g" id="barTx" style="width:50%"></i><i class="r" style="flex:1"></i></div>
+          <div class="stat"><span id="sBuyVolLbl">Buy volume</span><b id="sSellVol">—</b></div>
+          <div class="split"><i class="g" id="barVol" style="width:50%"></i><i class="r" style="flex:1"></i></div>
+          <div class="stat"><span id="sBuyersLbl">Buyers</span><b id="sSellers">—</b></div>
+          <div class="split"><i class="g" id="barWho" style="width:50%"></i><i class="r" style="flex:1"></i></div>
+          <div class="stat" style="margin-top:11px"><span>Swap fee · buy and sell</span><b>1.0%</b></div>
+          <!-- Named "extra" and "on top": at 1% the two rows carried the same figure and read as
+               a flat 2% on every trade, which is not what either of them is. -->
+          <div class="stat" id="taxRow" hidden><span>Extra sell tax, on top</span><b id="tax">—</b></div>
+          <div class="stat"><span>Raised</span><b id="raised">—</b></div>
+        </div>
+
+        <div class="card" style="padding:15px;margin-top:14px">
+          <div class="stat"><span id="mcLabel">Market cap</span><b id="athLabel">—</b></div>
+          <div class="split split-curve" style="height:7px"><i id="progress" class="weld" style="width:0%"></i></div>
+          <div class="dim" style="font-size:12px;line-height:1.6" id="progresstext">—</div>
+        </div>
+
+        <div class="card" style="padding:15px;margin-top:14px">
+          <b style="font-size:12.5px">Your referral link</b>
+          <div class="dim" style="font-size:11.5px;margin-top:5px;line-height:1.55">
+            Anyone who buys through your link credits you 20% of their trading fee, permanently.
+            Launch phase only.
+          </div>
+          <div class="reflink">
+            <input id="ref" readonly/>
+            <button class="btn" id="copyref">Copy</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main></div></div>
+
+<script src="assets/config.js?v=14"></script>
+<script src="assets/web3.bundle.js?v=16"></script>
+<script src="assets/chart.bundle.js?v=14"></script>
+<script src="assets/shell.js?v=17"></script>
+<script>
+hexaShell.mount({ active: '' });
+
+const E18 = 10n ** 18n, BPS = 10_000n;
+const $ = (id) => document.getElementById(id);
+const qs = new URLSearchParams(location.search);
+const TOKEN = qs.get('token'), CURVE = qs.get('curve'), REF = qs.get('ref');
+// Declared with the other constants, not beside the function that uses it: refresh() is
+// called above that point, and a const in its temporal dead zone throws rather than reads.
+const HEXA_API = window.HEXA_CONFIG?.hexaApi || localStorage.hexaApi || 'http://127.0.0.1:8880';
+// Meme coin prices live below 1e-6, where toFixed(6) prints "$0.000000" for every one of
+// them. Below that threshold, significant digits matter more than decimal places.
+const usd = (n) =>
+  n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M'
+  : n >= 1e3 ? '$' + (n / 1e3).toFixed(1) + 'K'
+  : n >= 1 ? '$' + n.toFixed(2)
+  : n >= 1e-6 ? '$' + n.toFixed(6)
+  : n > 0 ? '$' + n.toExponential(3)
+  : '$0';
+const num = (b, d = 18) => Number(hexa.formatUnits(b, d));
+const qty = (n) => n >= 1e9 ? (n/1e9).toFixed(2)+'B' : n >= 1e6 ? (n/1e6).toFixed(2)+'M'
+  : n >= 1e3 ? (n/1e3).toFixed(1)+'K' : n.toFixed(0);
+const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
+const ago = (ms) => {
+  const s = Math.max(0, (Date.now() - ms) / 1000);
+  return s < 60 ? `${s.toFixed(0)}s` : s < 3600 ? `${(s/60).toFixed(0)}m`
+       : s < 86400 ? `${(s/3600).toFixed(0)}h` : `${(s/86400).toFixed(0)}d`;
+};
+
+// `win` is the stats lookback; `interval` is the candle width. Different questions, so the
+// chart's interval menu no longer drags the Stats panel around with it.
+let side = 'buy', state = null, win = '1h', interval = 300, feed = null;
+
+if (!TOKEN || !CURVE) {
+  $('loading').innerHTML = 'Open a coin from <a href="explore.html">Explore</a>.';
+} else {
+  refresh();
+  setInterval(refresh, 15000);
+}
+
+/**
+ * Read through the indexer, not the RPC.
+ *
+ * Arc's public endpoint rate-limits by IP and this page wants a dozen values on a timer —
+ * straight from the browser that returns 429 within seconds and the page shows nothing. The
+ * indexer polls once and caches, so any number of tabs cost what one does. The RPC is still
+ * used directly for quotes and for sending transactions, which must be live.
+ */
+async function refresh() {
+  let s;
+  try {
+    const r = await fetch(`${HEXA_API}/curve?address=${CURVE}&token=${TOKEN}`, { cache: 'no-store' });
+    if (!r.ok) throw new Error(await r.text());
+    s = await r.json();
+  } catch (e) {
+    // refresh() is already on a 15s timer, so this reads as "Loading…" and quietly becomes the
+    // coin the moment the feed answers. No host, no error text, no command to run.
+    $('loading').textContent = 'Loading…';
+    $('loading').hidden = false; $('coin').hidden = true;
+    return;
+  }
+  // Both states are set on every success, not just the first. Setting only the error side on
+  // failure left the page stuck on the error screen even after a later refresh worked.
+  $('loading').hidden = true;
+  $('coin').hidden = false;
+
+  const sym = s.symbol, nm = s.name, graduated = s.graduated, inGuard = s.inGuardWindow;
+  const taxBps = BigInt(s.sellTaxBps);
+  const supply = BigInt(s.totalSupply), curveBal = BigInt(s.curveBal);
+  const virtualUsdc = BigInt(s.virtualUsdc), virtualTokens = BigInt(s.virtualTokens);
+  const realTokens = BigInt(s.realTokens), realUsdc = BigInt(s.realUsdc);
+  const creatorHeld = BigInt(s.creatorHeld);
+
+  state = { sym, supply, realTokens, graduated, taxBps, inGuard, virtualUsdc, virtualTokens };
+
+  const price = num(virtualUsdc) / num(virtualTokens);
+  // realTokens_0 is not stored, but it is recoverable: the curve holds the unsold curve supply
+  // plus the LP reserve, so the reserve is curveBal - realTokens.
+  const lpReserve = curveBal - realTokens;
+  const realTokens0 = supply - lpReserve;
+  const sold = realTokens0 - realTokens;
+  const pct = realTokens0 === 0n ? 0 : Number((sold * 10_000n) / realTokens0) / 100;
+
+  $('sym').textContent = sym; $('nm').textContent = nm;
+  $('tokenlink').textContent = short(TOKEN);
+  $('tokenlink').href = `https://testnet.arcscan.app/address/${TOKEN}`;
+  $('phase').textContent = graduated ? 'GRADUATED' : 'CURVE LIVE';
+  $('phase').className = 'tag ' + (graduated ? 'v3' : 'hx');
+  // Compact here, precise on the axis. The header is read at a glance; the axis has to keep
+  // its gridlines apart, and "$2.00K" repeated down the scale tells you nothing.
+  $('mcap').textContent = compact(price * num(supply));
+  $('lastpx').textContent = usd(price);
+  $('raised').textContent = compact(num(realUsdc));
+  // Shown only while it is above its 1% floor — otherwise it duplicates the swap fee row.
+  $('taxRow').hidden = Number(taxBps) <= 100;
+  $('tax').textContent = (Number(taxBps) / 100).toFixed(1) + '%';
+  $('progress').style.width = Math.min(100, pct) + '%';
+  $('progress').classList.toggle('grad', graduated);
+  weld(pct);
+  $('mcLabel').textContent = `Bonding curve ${pct.toFixed(1)}%`;
+  $('progresstext').textContent = graduated
+    ? 'Graduated. Liquidity is in a Uniswap v3 pool, locked with no withdraw path.'
+    : `${num(realTokens).toLocaleString(undefined,{maximumFractionDigits:0})} tokens left before this coin graduates and its liquidity locks.`;
+
+  $('ref').value = `${location.origin}${location.pathname}?token=${TOKEN}&curve=${CURVE}&ref=${hexa.currentAccount() ?? '<connect wallet>'}`;
+  $('thTok').textContent = sym;
+  renderNotice();
+  presets();
+  quote();
+  refreshBalance();
+  loadFeed();
+}
+
+/** Candles, holders, trades and windowed stats — one request, so the screen updates as a unit. */
+let fitted = false;
+async function loadFeed({ fit = false } = {}) {
+  try {
+    const r = await fetch(`${HEXA_API}/token?token=${TOKEN}&window=${win}&interval=${interval}`,
+                          { cache: 'no-store' });
+    feed = await r.json();
+  } catch { return; }
+  // Only fit on the first draw and on an interval change. The 15s refresh must not snap the
+  // view back while someone is zoomed in reading it.
+  drawChart({ fit: fit || !fitted });
+  if (feed.candles?.length) fitted = true;
+  renderArt();
+  renderSocials();
+  renderStats();
+  renderHolders();
+  renderTrades();
+  if (feed.meta?.revealedAt) $('agechip').textContent = ago(feed.meta.revealedAt) + ' ago';
+  const n = feed.stats?.holders ?? 0;
+  $('holdersChip').textContent = `· ${n} holder${n === 1 ? '' : 's'}`;
+}
+
+/**
+ * Throw sparks off the leading edge when the curve advances — a buy landed while the page was
+ * open. The first read is only a baseline: opening a coin that is already at 40% is not an
+ * advance and must not flash.
+ *
+ * The class is removed and the element reflowed before it goes back on, or a second advance
+ * inside one animation would be swallowed — a running animation does not restart because the
+ * class was set again.
+ */
+let weldPct = null;
+function weld(pct) {
+  const bar = $('progress');
+  if (weldPct !== null && pct > weldPct + 1e-3) {
+    bar.classList.remove('spark');
+    void bar.offsetWidth;
+    bar.classList.add('spark');
+  }
+  weldPct = pct;
+}
+
+/**
+ * The artwork lives in the creator's metadata, which arrives with the feed rather than with
+ * the curve state — so it is drawn here and not in refresh().
+ *
+ * Rewritten only when the URL actually changes. This runs every 15 seconds, and reassigning
+ * innerHTML on each pass would restart a video coin's clip forever.
+ */
+let artFor;
+function renderArt() {
+  const src = feed?.meta?.image ?? null;
+  if (artFor === src) return;
+  artFor = src;
+  $('art').innerHTML = hexaShell.art(TOKEN, src, { eager: true });
+}
+
+// ── links the creator supplied ─────────────────────────────────────────────
+const SOCIAL_ICON = {
+  x: '<path d="M3.4 3.2h3.5l4 5.3 4.5-5.3h1.6l-5.4 6.3 5.7 7.3h-3.5l-4.2-5.6-4.8 5.6H3.2l5.7-6.7Z" fill="currentColor" stroke="none"/>',
+  telegram: '<path d="M17.2 4.3 2.9 9.6c-.7.3-.7.8 0 1l3.6 1.1 1.4 4.2c.2.5.4.6.8.2l2-1.9 3.7 2.7c.5.3.9.1 1-.5l2.3-11c.1-.6-.2-.9-.5-.8Z" fill="currentColor" stroke="none"/>',
+  website: '<circle cx="10" cy="10" r="6.6"/><path d="M3.4 10h13.2M10 3.4a12 12 0 0 1 0 13.2 12 12 0 0 1 0-13.2"/>',
+};
+const SOCIAL_NAME = { x: 'X', telegram: 'Telegram', website: 'Website' };
+
+/**
+ * Every value here came from the coin's creator. The indexer already rejects anything that is
+ * not an http(s) URL, and these are written with textContent / setAttribute rather than into an
+ * HTML string, so a crafted name cannot close the tag and inject markup.
+ */
+function renderSocials() {
+  const host = $('socials');
+  host.textContent = '';
+  const m = feed?.meta ?? {};
+  // Always render all three, so the row does not reflow as coins come and go. A slot with no
+  // link is a dead button that says so, rather than a missing one.
+  for (const key of ['x', 'telegram', 'website']) {
+    const url = m[key];
+    let handle = null;
+    if (url) {
+      try {
+        const u = new URL(url);
+        handle = u.pathname.replace(/\/+$/, '').split('/').filter(Boolean).pop() || u.hostname;
+      } catch { handle = null; }
+    }
+
+    const el = document.createElement(handle ? 'a' : 'span');
+    if (handle) { el.href = url; el.target = '_blank'; el.rel = 'noopener noreferrer'; }
+    else el.classList.add('off');
+    el.tabIndex = 0;
+    el.title = SOCIAL_NAME[key];
+    el.innerHTML = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4"
+      stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${SOCIAL_ICON[key]}</svg>`;
+
+    const peek = document.createElement('span');
+    peek.className = 'peek';
+    const av = document.createElement('span');
+    av.className = 'av';
+    av.textContent = handle ? handle.slice(0, 2).toUpperCase() : '—';
+    const name = document.createElement('b');
+    name.textContent = handle ?? 'N/A';
+    const sub = document.createElement('span');
+    sub.textContent = handle
+      ? (key === 'website' ? new URL(url).hostname : '@' + handle)
+      : `The creator did not add a ${SOCIAL_NAME[key]} link`;
+    peek.append(av, name, sub);
+    if (handle) {
+      const go = document.createElement('span');
+      go.className = 'go';
+      go.textContent = `See ${key === 'website' ? 'the site' : 'profile on ' + SOCIAL_NAME[key]}`;
+      peek.append(go);
+    }
+    el.append(peek);
+    host.append(el);
+  }
+}
+
+$('copyaddr').addEventListener('click', async (e) => {
+  e.preventDefault();
+  await navigator.clipboard.writeText(TOKEN);
+  const b = $('copyaddr'); b.classList.add('ok');
+  b.title = 'Copied';
+  setTimeout(() => { b.classList.remove('ok'); b.title = 'Copy token address'; }, 1400);
+});
+
+// ── chart ──────────────────────────────────────────────────────────────────
+let chart = null, scaleMode = 'mcap', showVol = true, slipPct = 1;
+
+/** Header figures: always compact, two decimals — $2.00K, $1.47M. */
+const compact = (n) => !isFinite(n) ? '—'
+  : n >= 1e9 ? '$' + (n / 1e9).toFixed(2) + 'B'
+  : n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M'
+  : n >= 1e3 ? '$' + (n / 1e3).toFixed(2) + 'K'
+  : '$' + n.toFixed(2);
+
+const SUB = '₀₁₂₃₄₅₆₇₈₉';
+/**
+ * Axis and crosshair labels.
+ *
+ * A coin priced at 2.02e-6 renders as "$0.000002" on every gridline, so the whole scale reads
+ * as one repeated number. Below four leading zeros this switches to the subscript form the
+ * other terminals use — $0.0₅2021 — which keeps four significant digits in the same width.
+ */
+const axisFmt = (n) => {
+  if (!isFinite(n) || n <= 0) return '$0';
+  if (n >= 1e6) return '$' + (n / 1e6).toFixed(2) + 'M';
+  // Between $1K and $100K, "K with two decimals" is too coarse for this curve: a coin lives
+  // between $2,000 and $29,392, so every gridline rounded to the same $2.00K. Full dollars
+  // there; the K/M shorthand only once the numbers are long enough to need it.
+  if (n >= 1e5) return '$' + (n / 1e3).toFixed(1) + 'K';
+  if (n >= 1) return '$' + n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+  const zeros = -Math.floor(Math.log10(n)) - 1;
+  if (zeros >= 4) {
+    const digits = (n * 10 ** (zeros + 4)).toFixed(0).slice(0, 4);
+    return '$0.0' + String(zeros).split('').map((d) => SUB[+d]).join('') + digits;
+  }
+  return '$' + n.toFixed(zeros + 4);
+};
+
+/** TradingView Lightweight Charts, bundled locally — see site/src/chart.js for why that one. */
+function drawChart({ fit = true } = {}) {
+  const el = $('chart'), candles = feed?.candles ?? [], empty = $('chartempty');
+  // One candle is a chart. The indexer carries the last close forward, so a coin whose only
+  // trade was hours ago still draws — it used to require two and showed nothing.
+  if (!candles.length) {
+    el.hidden = true; empty.hidden = false;
+    empty.innerHTML = 'No trades yet.<br>The chart is built from real trades, so it stays empty until someone trades.';
+    return;
+  }
+  el.hidden = false; empty.hidden = true;
+
+  // Created on first use, not on load: the container has zero height while hidden, and a
+  // chart sized against that stays zero-height after it is shown.
+  chart ??= hexaChart.mountChart(el, { priceFormatter: axisFmt });
+
+  // Market cap by default, like every other launchpad terminal: a curve price of 0.000002 puts
+  // every axis label in the same three significant figures, where $2.02K reads at a glance.
+  const supply = state ? num(state.supply) : 1;
+  const scale = scaleMode === 'mcap' ? supply : 1;
+  chart.setData(candles, { scale, fit });
+}
+
+const segment = (id, attr, onPick) => {
+  for (const b of document.querySelectorAll(`#${id} button[data-${attr}]`)) {
+    b.addEventListener('click', () => {
+      for (const o of document.querySelectorAll(`#${id} button[data-${attr}]`)) o.removeAttribute('aria-selected');
+      b.setAttribute('aria-selected', 'true');
+      onPick(b.dataset[attr], b);
+    });
+  }
+};
+
+segment('scales', 's', (s) => { scaleMode = s; drawChart(); });
+segment('slips', 'p', (p) => { slipPct = Number(p); $('slipCustom').value = ''; });
+
+// Typing a custom figure deselects the presets, so the panel never shows two active choices.
+$('slipCustom').addEventListener('input', () => {
+  const v = Number($('slipCustom').value);
+  if (!Number.isFinite(v) || v <= 0) return;
+  // Clamped, because a slippage of 100% is the same as having none at all.
+  slipPct = Math.min(50, Math.max(0.1, v));
+  for (const b of document.querySelectorAll('#slips button')) b.removeAttribute('aria-selected');
+});
+
+// ── dropdown menus ─────────────────────────────────────────────────────────
+const closeMenus = (except) => {
+  for (const m of document.querySelectorAll('.menu')) {
+    if (m === except) continue;
+    m.querySelector('.pop').hidden = true;
+    m.querySelector('.trigger').setAttribute('aria-expanded', 'false');
+  }
+};
+for (const m of document.querySelectorAll('.menu')) {
+  const trigger = m.querySelector('.trigger'), pop = m.querySelector('.pop');
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const open = pop.hidden;
+    closeMenus(m);
+    pop.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+  });
+  pop.addEventListener('click', () => { pop.hidden = true; trigger.setAttribute('aria-expanded', 'false'); });
+}
+// A menu left open behind a click elsewhere is the classic dropdown bug.
+document.addEventListener('click', () => closeMenus(null));
+addEventListener('keydown', (e) => e.key === 'Escape' && closeMenus(null));
+
+const INTERVAL_LABEL = { 1: '1s', 15: '15s', 30: '30s', 60: '1m', 300: '5m',
+                         900: '15m', 1800: '30m', 3600: '1H', 14400: '4H' };
+segment('mInterval', 'i', (i) => {
+  interval = Number(i);
+  $('intervalLabel').textContent = INTERVAL_LABEL[interval] ?? i + 's';
+  loadFeed({ fit: true });
+});
+segment('mType', 't', (t) => chart?.setType(t));
+
+$('volToggle').addEventListener('click', () => {
+  showVol = !showVol;
+  $('volToggle').setAttribute('aria-pressed', String(showVol));
+  chart?.setVolumeVisible(showVol);
+});
+$('fitBtn').addEventListener('click', () => chart?.resetZoom());
+
+// Stats keeps its own lookback, independent of the chart's candle interval.
+segment('statframes', 'w', (v) => { win = v; $('statwin').textContent = v; loadFeed(); });
+
+// ── stats / tables ─────────────────────────────────────────────────────────
+function renderStats() {
+  const s = feed?.stats; if (!s) return;
+  const pct = (a, b) => (a + b === 0 ? 50 : (a / (a + b)) * 100);
+  $('sChange').innerHTML = s.change === null ? '—'
+    : `<span class="${s.change >= 0 ? 'up' : 'down'}">${s.change >= 0 ? '+' : ''}${(s.change * 100).toFixed(1)}%</span>`;
+  $('sVol').textContent = usd(s.volume);
+  $('sBuysLbl').innerHTML = `<span class="up">${s.buys} buys</span>`;
+  $('sSells').innerHTML = `<span class="down">${s.sells} sells</span>`;
+  $('barTx').style.width = pct(s.buys, s.sells) + '%';
+  $('sBuyVolLbl').innerHTML = `<span class="up">${usd(s.buyVol)} buy</span>`;
+  $('sSellVol').innerHTML = `<span class="down">${usd(s.sellVol)} sell</span>`;
+  $('barVol').style.width = pct(s.buyVol, s.sellVol) + '%';
+  $('sBuyersLbl').innerHTML = `<span class="up">${s.buyers} buyers</span>`;
+  $('sSellers').innerHTML = `<span class="down">${s.sellers} sellers</span>`;
+  $('barWho').style.width = pct(s.buyers, s.sellers) + '%';
+  $('athLabel').textContent = s.ath > 0 ? 'ATH ' + usd(s.ath * num(state.supply)) : '—';
+}
+
+function renderHolders() {
+  const rows = feed?.holders ?? [], body = $('holders'), empty = $('holdersempty');
+  $('nholders').textContent = rows.length || '';
+  empty.hidden = rows.length > 0;
+  document.querySelector('#holders').closest('.tbl').hidden = rows.length === 0;
+  if (!rows.length) {
+    empty.textContent = 'Nobody holds this coin from a curve trade yet.';
+    return;
+  }
+  const supply = num(state.supply);
+  const px = num(state.virtualUsdc) / num(state.virtualTokens);
+  const creator = (feed?.meta?.creator ?? '').toLowerCase();
+
+  body.innerHTML = rows.map((h) => {
+    const value = h.tokens * px;
+    // Realised proceeds count: a wallet that sold at a profit is up even if what it still
+    // holds is worth less than the whole cost basis.
+    const pnl = value + h.realised - h.invested;
+    const flat = Math.abs(pnl) < 5e-5;
+    return `<tr>
+      <td><a class="who" href="https://testnet.arcscan.app/address/${h.addr}" target="_blank"
+             rel="noopener">${short(h.addr)}</a>${h.addr === creator ? '<span class="badge">Creator</span>' : ''}</td>
+      <td>${usd(value)}</td>
+      <td class="${flat ? 'dim' : pnl > 0 ? 'up' : 'down'}">${flat ? '$0.00' : (pnl > 0 ? '+' : '−') + usd(Math.abs(pnl))}</td>
+      <td>${((h.tokens / supply) * 100).toFixed(2)}%</td></tr>`;
+  }).join('');
+}
+
+function renderTrades() {
+  const rows = feed?.trades ?? [], body = $('trades'), empty = $('tradesempty');
+  $('ntrades').textContent = feed?.stats?.txns || '';
+  empty.hidden = rows.length > 0;
+  document.querySelector('#trades').closest('.tbl').hidden = rows.length === 0;
+  if (!rows.length) { empty.textContent = 'No trades yet.'; return; }
+  body.innerHTML = rows.map((t) => `<tr>
+    <td><span class="who">${short(t.trader)}</span></td>
+    <td class="${t.side === 'buy' ? 'up' : 'down'}">${t.side === 'buy' ? 'Buy' : 'Sell'}</td>
+    <td>${usd(t.usdc)}</td>
+    <td class="dim">${qty(t.tokens)}</td>
+    <td class="dim">${ago(t.ts)}</td></tr>`).join('');
+}
+
+// ── trade panel ────────────────────────────────────────────────────────────
+/**
+ * Balance for the side being traded: USDC when buying, the coin itself when selling.
+ *
+ * On Arc the native balance and the USDC ERC-20 balance are the same funds seen two ways, so
+ * there is one number to show rather than two that would double-count.
+ */
+let balances = { usdc: 0n, token: 0n };
+async function refreshBalance() {
+  const acct = hexa.currentAccount();
+  const label = $('balLabel');
+  if (!acct) { label.textContent = 'Connect a wallet'; return; }
+  try {
+    const [u, t] = await Promise.all([
+      hexa.pub.getBalance({ address: acct }),
+      hexa.read(TOKEN, 'HexaToken', 'balanceOf', [acct]).catch(() => 0n),
+    ]);
+    balances = { usdc: u, token: t };
+  } catch { /* keep the last known figures */ }
+  label.textContent = side === 'buy'
+    ? `Balance ${usd(num(balances.usdc))}`
+    : `Balance ${qty(num(balances.token))} ${state?.sym ?? ''}`;
+}
+
+$('maxBtn').addEventListener('click', async () => {
+  if (!hexa.currentAccount()) return document.getElementById('connect').click();
+  await refreshBalance();
+  if (side === 'buy') {
+    // Buying spends the gas too, so the whole balance would leave nothing to pay with.
+    const keep = hexa.parseEther('0.05');
+    const spend = balances.usdc > keep ? balances.usdc - keep : 0n;
+    $('amount').value = num(spend).toFixed(4);
+  } else {
+    $('amount').value = num(balances.token);
+  }
+  quote();
+});
+
+function presets() {
+  const vals = side === 'buy' ? [1, 5, 25, 100] : [25, 50, 75, 100];
+  $('presets').innerHTML = vals.map((v) =>
+    `<button data-v="${v}">${side === 'buy' ? '$' + v : v + '%'}</button>`).join('');
+  for (const b of $('presets').children) {
+    b.addEventListener('click', async () => {
+      if (side === 'buy') { $('amount').value = b.dataset.v; return quote(); }
+      const acct = hexa.currentAccount();
+      if (!acct) return document.getElementById('connect').click();
+      const bal = await hexa.read(TOKEN, 'HexaToken', 'balanceOf', [acct]);
+      $('amount').value = num((bal * BigInt(b.dataset.v)) / 100n);
+      quote();
+    });
+  }
+}
+
+function renderNotice() {
+  const n = $('notice');
+  if (state.graduated) {
+    n.innerHTML = `<div class="warn2">This coin has graduated. The curve is closed — trade it on its
+      Uniswap v3 pool instead.</div>`;
+  } else if (side === 'sell' && Number(state.taxBps) > 500) {
+    n.innerHTML = `<div class="warn2"><b>Sell tax is ${(Number(state.taxBps)/100).toFixed(1)}% right now</b>
+      and decays toward 1%. It is not a fee we collect — it stays in the curve, so an early
+      flip raises the floor for everyone still holding.</div>`;
+  } else if (side === 'buy' && state.inGuard) {
+    n.innerHTML = `<div class="warn2">Opening window: each wallet is capped at a share of supply.
+      Because the curve starts cheap, that cap is a small dollar amount right now.</div>`;
+  } else n.innerHTML = '';
+}
+
+for (const [id, s] of [['tbuy','buy'], ['tsell','sell']]) {
+  $(id).addEventListener('click', () => {
+    side = s;
+    $('tbuy').setAttribute('aria-selected', String(s === 'buy'));
+    $('tsell').setAttribute('aria-selected', String(s === 'sell'));
+    $('amount').placeholder = s === 'buy' ? '0.00' : '0';
+    $('trade').classList.toggle('sell', s === 'sell');
+    if (hexa.currentAccount()) $('trade').textContent = s === 'buy' ? 'Buy' : 'Sell';
+    renderNotice(); presets(); quote(); refreshBalance();
+  });
+}
+
+$('amount').addEventListener('input', quote);
+
+/**
+ * Quote, slippage floor and price impact.
+ *
+ * The floor shown here is the number actually sent as `minTokensOut` / `minUsdcOut`, so what
+ * the panel promises is what the contract enforces.
+ *
+ * Price impact is measured against the curve's spot price with the fee taken out — leaving the
+ * fee in would report a flat 1% impact on every trade, however small, which tells you nothing
+ * about the trade itself.
+ */
+async function quote() {
+  const raw = $('amount').value;
+  const q = $('quote'), out = $('qOut'), min = $('qMin'), imp = $('qImpact');
+  const blank = () => { out.textContent = min.textContent = imp.textContent = '—'; };
+
+  if (!raw || Number(raw) <= 0 || !state) { blank(); q.textContent = ''; return; }
+  const floor = (v) => (v * (BPS - BigInt(Math.round(slipPct * 100)))) / BPS;
+  const spot = num(state.virtualUsdc) / num(state.virtualTokens);
+
+  try {
+    if (side === 'buy') {
+      const inWei = hexa.parseEther(raw);
+      const got = await hexa.read(CURVE, 'HexaCurve', 'quoteBuy', [inWei]);
+      const tokens = num(got);
+      out.textContent = tokens.toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' ' + state.sym;
+      min.textContent = num(floor(got)).toLocaleString(undefined, { maximumFractionDigits: 0 }) + ' ' + state.sym;
+      const execNoFee = (Number(raw) * 0.99) / tokens;
+      imp.innerHTML = impactCell(execNoFee / spot - 1);
+      q.textContent = '';
+    } else {
+      const amount = hexa.parseEther(raw);
+      const got = await hexa.read(CURVE, 'HexaCurve', 'quoteSell', [amount]);
+      const usdcOut = num(got);
+      out.textContent = usd(usdcOut);
+      min.textContent = usd(num(floor(got)));
+      // A sell pays the decaying tax on top of the fee, so it is named rather than folded in.
+      const execNoFee = usdcOut / 0.99 / Number(raw);
+      imp.innerHTML = impactCell(execNoFee / spot - 1);
+      q.textContent = Number(state.taxBps) > 100
+        ? `Includes a ${(Number(state.taxBps) / 100).toFixed(1)}% sell tax, which stays in the curve.`
+        : '';
+    }
+  } catch {
+    blank();
+    q.textContent = 'No quote — the amount may exceed what the curve can fill.';
+  }
+}
+
+const impactCell = (v) => {
+  if (!isFinite(v)) return '—';
+  const pctv = v * 100;
+  const cls = Math.abs(pctv) < 1 ? 'dim' : pctv > 0 ? 'down' : 'up';   // paying more is the bad side
+  return `<span class="${cls}">${pctv >= 0 ? '' : '−'}${Math.abs(pctv).toFixed(2)}%</span>`;
+};
+
+document.addEventListener('hexa:account', () => {
+  $('trade').textContent = side === 'buy' ? 'Buy' : 'Sell';
+  refresh(); refreshBalance();
+});
+
+$('copyref').addEventListener('click', () => {
+  navigator.clipboard.writeText($('ref').value);
+  $('copyref').textContent = 'Copied';
+  setTimeout(() => ($('copyref').textContent = 'Copy'), 1500);
+});
+
+$('trade').addEventListener('click', async () => {
+  const acct = hexa.currentAccount();
+  const e = $('terr'); e.textContent = '';
+  if (!acct) return document.getElementById('connect').click();
+  const raw = $('amount').value;
+  if (!raw || Number(raw) <= 0) return (e.textContent = 'Enter an amount.');
+
+  const btn = $('trade');
+  btn.disabled = true;
+  try {
+    // Slippage floor. This used to pass 0, meaning "accept any fill" — on a public mempool
+    // with first-come-first-served ordering that is an open invitation to be sandwiched.
+    const bps = BigInt(Math.round(slipPct * 100));
+    const floor = (quoted) => (quoted * (BPS - bps)) / BPS;
+
+    if (side === 'buy') {
+      const inWei = hexa.parseEther(raw);
+      const expect = await hexa.read(CURVE, 'HexaCurve', 'quoteBuy', [inWei]);
+      btn.textContent = 'Confirm in wallet…';
+      const referrer = REF && REF.toLowerCase() !== acct.toLowerCase() ? REF : '0x0000000000000000000000000000000000000000';
+      await hexa.write(CURVE, 'HexaCurve', 'buy', [floor(expect), acct, referrer], inWei);
+    } else {
+      const amount = hexa.parseEther(raw);
+      const expect = await hexa.read(CURVE, 'HexaCurve', 'quoteSell', [amount]);
+      // The curve pulls with transferFrom, so selling needs an allowance first.
+      const allowance = await hexa.read(TOKEN, 'HexaToken', 'allowance', [acct, CURVE]);
+      if (allowance < amount) {
+        btn.textContent = 'Approve in wallet…';
+        await hexa.write(TOKEN, 'HexaToken', 'approve', [CURVE, amount]);
+      }
+      btn.textContent = 'Confirm in wallet…';
+      await hexa.write(CURVE, 'HexaCurve', 'sell', [amount, floor(expect), acct]);
+    }
+    $('amount').value = '';
+    await refresh();
+  } catch (ex) {
+    e.textContent = ex.shortMessage || ex.message;
+  }
+  btn.disabled = false;
+  btn.textContent = side === 'buy' ? 'Buy' : 'Sell';
+});
+</script>
+</body>
+</html>

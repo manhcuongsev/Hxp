@@ -1,0 +1,804 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Swap — Hexapus</title>
+<link rel="stylesheet" href="assets/app.css?v=20"/>
+<style>
+  /* One card, so the column is centred in the pane rather than hugging the left edge the way
+     the data pages do. */
+  body main{display:flex;flex-direction:column;justify-content:center;min-height:calc(100vh - 96px)}
+  .wrap{max-width:520px;margin:0 auto;width:100%}
+
+  .sw-hd{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px}
+  .sw-hd h1{font-size:26px;letter-spacing:-.025em;line-height:1.15}
+  .sw-hd .sub{font-size:13px;color:var(--dim);margin-top:4px}
+  .sw-hd .sub b{color:#e879f9;font-weight:600}
+  /* Two panels with the direction button straddling the seam, the shape every swap UI uses. */
+  .leg2{padding:15px 16px;border-radius:15px;background:rgba(255,255,255,.032);
+    border:1px solid var(--line)}
+  .leg2:focus-within{border-color:rgba(232,121,249,.45)}
+  .leg2 .lbl{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+  .leg2 .lbl span{font-size:13px;color:var(--dim)}
+  .leg2 .bal{margin-left:auto;font:400 12.5px var(--num);color:var(--dim)}
+  .maxbtn{font:600 10.5px var(--num);letter-spacing:.05em;padding:3px 7px;border-radius:6px;
+    color:#5fe3a1;background:rgba(95,227,161,.13);border:1px solid rgba(95,227,161,.32)}
+  .maxbtn:hover{background:rgba(95,227,161,.22)}
+  .leg2 .row{display:flex;align-items:center;gap:12px}
+  .bigamt{flex:1;min-width:0;width:100%;padding:0;border:0;outline:none;background:transparent;
+    font:700 32px var(--num);letter-spacing:-.02em;color:var(--ink)}
+  .bigamt::placeholder{color:#3d4352}
+  .bigamt:disabled{color:var(--muted)}
+  /* No spinner. The stepper arrows sat on top of a 32px figure and nudged it by 1 USDC a click,
+     which is not a gesture anyone wants on an amount field. */
+  .bigamt::-webkit-outer-spin-button,.bigamt::-webkit-inner-spin-button{
+    -webkit-appearance:none;appearance:none;margin:0}
+  .bigamt[type=number]{-moz-appearance:textfield;appearance:textfield}
+  .fiat{font:400 12.5px var(--num);color:var(--dim);margin-top:7px;min-height:16px}
+
+  /* The token button is the widest thing on the row, so it gets the pill and the chevron. */
+  .tokbtn{display:flex;align-items:center;gap:8px;flex:0 0 auto;max-width:60%;
+    padding:7px 11px 7px 8px;border-radius:999px;font-size:14.5px;font-weight:620;color:var(--ink);
+    background:rgba(255,255,255,.07);border:1px solid var(--line)}
+  .tokbtn:hover{border-color:rgba(232,121,249,.45)}
+  .tokbtn .av{width:24px;height:24px;flex:0 0 24px;border-radius:50%;display:grid;place-items:center;
+    font-size:14px;overflow:hidden;background:linear-gradient(140deg,#1b2029,#0d1015);
+    border:1px solid var(--line)}
+  .tokbtn .av img{width:100%;height:100%;object-fit:cover;display:block}
+  .tokbtn .sym{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tokbtn .chev{font-style:normal;font-size:9px;opacity:.6;margin-left:1px}
+  .tokbtn.empty{color:var(--ink);background:linear-gradient(180deg,#c94cf0,#8b3ff0);border-color:transparent}
+
+  .flip2{display:flex;justify-content:center;margin:-11px 0;position:relative;z-index:2}
+  .flip2 button{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
+    color:var(--muted);background:#14161c;border:1px solid var(--line)}
+  .flip2 button:hover{color:var(--ink);border-color:rgba(232,121,249,.45)}
+  .flip2 svg{width:15px;height:15px}
+
+  /* The live button is the brightest thing on the page — it is the one irreversible action,
+     and it was reading as disabled next to the panels. The sheen sweeps once on hover. */
+  .cta{width:100%;padding:15px;margin-top:14px;border-radius:14px;font-size:15.5px;font-weight:700;
+    position:relative;overflow:hidden;color:#fff;border:0;
+    background:linear-gradient(100deg,#f45cf0,#a855f7 55%,#7c3aed);
+    box-shadow:0 10px 26px -10px rgba(232,121,249,.75), inset 0 1px 0 rgba(255,255,255,.28);
+    transition:transform .13s, box-shadow .13s, filter .13s}
+  .cta:not(:disabled):hover{filter:brightness(1.1);transform:translateY(-1px);
+    box-shadow:0 14px 32px -10px rgba(232,121,249,.9), inset 0 1px 0 rgba(255,255,255,.34)}
+  .cta:not(:disabled):active{transform:translateY(0)}
+  .cta:not(:disabled)::after{content:'';position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.35) 50%,transparent 65%);
+    transform:translateX(-120%)}
+  .cta:not(:disabled):hover::after{transform:translateX(120%);transition:transform .7s ease}
+  .cta:disabled{color:var(--dim);background:rgba(255,255,255,.045);border:1px solid var(--line);
+    box-shadow:none;cursor:default}
+
+  .infobar{display:flex;gap:9px;align-items:flex-start;margin-top:14px;padding:11px 13px;
+    border-radius:12px;font-size:12.5px;line-height:1.6;color:var(--muted);
+    background:rgba(255,255,255,.035);border:1px solid var(--line)}
+  .infobar svg{width:15px;height:15px;flex:0 0 15px;margin-top:1px;color:var(--dim)}
+  .infobar a{color:#e879f9}
+
+  .chainlist{margin-top:11px;font-size:12.5px;color:var(--dim);line-height:1.75}
+  .chainlist b{font:600 12.5px var(--num);color:var(--muted)}
+
+  /* funding source */
+  .srcbox{display:grid;gap:6px;margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)}
+  .src{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:10px;cursor:pointer;
+    border:1px solid transparent}
+  .src:hover{background:rgba(255,255,255,.035)}
+  .src:has(input:checked){background:rgba(232,121,249,.08);border-color:rgba(232,121,249,.32)}
+  .src input{accent-color:#e879f9;width:14px;height:14px;flex:0 0 14px}
+  .src .t{flex:1;display:flex;align-items:baseline;gap:8px;font-size:13.5px;color:var(--muted)}
+  .src:has(input:checked) .t{color:var(--ink)}
+  .src .t i{margin-left:auto;font:600 13px var(--num);font-style:normal}
+  .srcnote{font-size:11.5px;color:#ffcf5a}
+  .src.off{opacity:.45;cursor:default}
+  .dep{margin:2px 2px 0;padding:11px 12px;border-radius:11px;
+    background:rgba(255,255,255,.03);border:1px solid var(--line)}
+  .depnote{font-size:12px;color:var(--dim);line-height:1.6;margin-bottom:9px}
+  .deprow{display:flex;gap:7px}
+  .deprow input,.chainbtn{min-width:0;padding:8px 10px;border-radius:9px;font:inherit;
+    font-size:13px;color:var(--ink);background:rgba(255,255,255,.05);border:1px solid var(--line);
+    outline:none}
+  /* A native <select> paints its option list with the OS palette — white on white here, which
+     is why the chain names were unreadable. This is an ordinary popup we control. */
+  .chainsel{position:relative;flex:1;min-width:0}
+  .chainbtn{width:100%;display:flex;align-items:center;gap:8px;text-align:left}
+  .chainbtn i{margin-left:auto;font-style:normal;font-size:9px;opacity:.6}
+  .chainbtn:hover{border-color:rgba(232,121,249,.45)}
+  /* Overlays the row rather than sitting in it. As a flex sibling it became a second column
+     and squeezed the button into a two-line sliver. */
+  .chainpop{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:25;
+    max-height:230px;overflow-y:auto;border-radius:11px;
+    background:#14161c;border:1px solid var(--line);padding:5px;
+    box-shadow:0 20px 44px -16px rgba(0,0,0,.9)}
+  .chainpop[hidden]{display:none}
+  .chainopt{display:flex;align-items:center;gap:9px;width:100%;text-align:left;padding:8px 10px;
+    border-radius:8px;font-size:13px;color:var(--muted)}
+  .chainopt:hover{background:rgba(255,255,255,.06);color:var(--ink)}
+  .chainopt[aria-selected=true]{background:rgba(232,121,249,.12);color:#e879f9}
+  .chainopt b{margin-left:auto;font:600 12.5px var(--num);color:var(--ink)}
+  .chainopt b.zero{color:var(--dim);font-weight:400}
+  .deprow input{width:96px;font-family:var(--num);text-align:right}
+  .deprow input::-webkit-outer-spin-button,.deprow input::-webkit-inner-spin-button{
+    -webkit-appearance:none;appearance:none;margin:0}
+  .deprow .btn{flex:0 0 auto;padding:8px 14px;font-size:13px}
+
+  /* trade terms */
+  .terms{margin-top:14px;padding:12px 14px;border-radius:13px;
+    background:rgba(255,255,255,.028);border:1px solid var(--line)}
+  .terms .tr{display:flex;align-items:baseline;gap:10px;font-size:13px;padding:4px 0}
+  .terms .tr span{color:var(--dim)}
+  .terms .tr b{margin-left:auto;font:600 13px var(--num)}
+  .terms .q{display:inline-grid;place-items:center;width:13px;height:13px;border-radius:50%;
+    font:600 9px var(--num);font-style:normal;color:var(--dim);border:1px solid var(--line);
+    cursor:help;vertical-align:1px;margin-left:3px}
+  .slips{display:inline-flex;gap:3px}
+  .slips button{padding:2px 7px;border-radius:6px;font:600 11.5px var(--num);color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .slips button[aria-selected=true]{color:#e879f9;border-color:rgba(232,121,249,.45);
+    background:rgba(232,121,249,.12)}
+  .slipin{width:62px;margin-left:4px;padding:2px 6px;border-radius:6px;text-align:right;
+    font:600 11.5px var(--num);color:var(--ink);background:rgba(255,255,255,.05);
+    border:1px solid var(--line);outline:none}
+  .slipin:focus{border-color:rgba(232,121,249,.45)}
+  .slipin::placeholder{font-weight:400;color:var(--dim)}
+  .slipin::-webkit-outer-spin-button,.slipin::-webkit-inner-spin-button{
+    -webkit-appearance:none;appearance:none;margin:0}
+  .err2{font-size:13px;color:#ff6b81;margin-top:12px;line-height:1.55;word-break:break-word}
+  .okbox{margin-top:14px;padding:11px 13px;border-radius:12px;font-size:13px;line-height:1.55;
+    color:var(--up);background:rgba(95,227,161,.08);border:1px solid rgba(95,227,161,.28)}
+  .okbox a{color:var(--up);text-decoration:underline}
+
+  /* steps */
+  .steps2{margin-top:14px;display:none}
+  .steps2.on{display:block}
+  .st{display:flex;align-items:center;gap:11px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .st:last-child{border-bottom:0}
+  .st .dot{width:19px;height:19px;flex:0 0 19px;border-radius:50%;display:grid;place-items:center;
+    font:700 10px var(--num);color:var(--dim);border:1px solid var(--line)}
+  .st.run .dot{border-color:#e879f9;color:#e879f9}
+  .st.ok .dot{background:var(--up);border-color:var(--up);color:#08131c}
+  .st.err .dot{background:var(--down);border-color:var(--down);color:#2a0710}
+  .st .t{flex:1;font-size:13.5px;color:var(--muted)}
+  .st.ok .t,.st.run .t{color:var(--ink)}
+
+  /* ── token picker ───────────────────────────────────── */
+  /* Centred on the content column, not the window — the sidebar is a fixed 212px that the
+     sheet was quietly sitting on top of, pushing it left of where the card actually is. */
+  .tokwrap{position:fixed;inset:0 0 0 var(--sidebar);z-index:80;display:none;
+    padding:60px 16px;overflow-y:auto;background:rgba(4,5,8,.72)}
+  /* Below 900px the sidebar becomes a bottom bar, so the column is the full width again. */
+  @media(max-width:900px){.tokwrap{inset:0}}
+  .tokwrap.on{display:block}
+  .toksheet{max-width:420px;margin:0 auto;border-radius:18px;background:#14161c;
+    border:1px solid var(--line);box-shadow:0 30px 70px -20px rgba(0,0,0,.9);overflow:hidden}
+  .tokhd{display:flex;align-items:center;padding:17px 18px 13px}
+  .tokhd b{font-size:17px;font-weight:640}
+  .tokhd button{margin-left:auto;color:var(--dim);font-size:19px;line-height:1;padding:0 2px}
+  .tokhd button:hover{color:var(--ink)}
+  .toksearch{margin:0 18px 14px;display:flex;align-items:center;gap:9px;padding:10px 13px;
+    border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .toksearch:focus-within{border-color:rgba(232,121,249,.45)}
+  .toksearch svg{width:15px;height:15px;flex:0 0 15px;color:var(--dim)}
+  .toksearch input{flex:1;min-width:0;border:0;outline:none;background:transparent;color:var(--ink);
+    font:400 14px var(--mono)}
+  .toksearch input::placeholder{font-family:var(--sans);color:var(--dim)}
+  .toklabel{padding:4px 18px 7px;font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--dim)}
+  .toklist{max-height:min(50vh,420px);overflow-y:auto;padding:0 10px 12px}
+  .tokrow{display:flex;align-items:center;gap:11px;width:100%;text-align:left;padding:9px 8px;
+    border-radius:11px}
+  .tokrow:hover{background:rgba(255,255,255,.05)}
+  .tokrow .av{width:34px;height:34px;flex:0 0 34px;border-radius:50%;display:grid;place-items:center;
+    font-size:18px;overflow:hidden;background:linear-gradient(140deg,#1b2029,#0d1015);
+    border:1px solid var(--line)}
+  .tokrow .who{flex:1;min-width:0}
+  .tokrow .who b{display:block;font-size:14.5px;font-weight:620}
+  .tokrow .who span{display:block;font:400 12px var(--mono);color:var(--dim);
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tokempty{padding:22px 18px;font-size:13.5px;color:var(--dim);line-height:1.6}
+
+  /* The badge is the whole point of showing an unknown token at all, so it is loud: amber
+     triangle, red bang, and a sentence that names the risk rather than hinting at it. */
+  .warnpill{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;padding:3px 8px 3px 6px;
+    border-radius:999px;font-size:11px;font-weight:620;color:#ffcf5a;
+    background:rgba(255,190,60,.12);border:1px solid rgba(255,190,60,.38)}
+  .warnpill svg{width:13px;height:13px;flex:0 0 13px}
+  .warnbox{display:flex;gap:10px;margin:0 18px 14px;padding:11px 13px;border-radius:12px;
+    font-size:12.5px;line-height:1.6;color:#ffdcae;
+    background:rgba(255,190,60,.09);border:1px solid rgba(255,190,60,.34)}
+  .warnbox svg{width:17px;height:17px;flex:0 0 17px;margin-top:1px}
+  .warnbox b{color:#ffcf5a}
+</style>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body"><main>
+
+  <div class="wrap">
+    <div class="sw-hd">
+      <div>
+        <h1>Swap</h1>
+        <div class="sub">Pay from your <b>unified balance</b> · USDC-native gas on Arc</div>
+      </div>
+    </div>
+
+    <div class="leg2">
+      <div class="lbl">
+        <span>You pay</span>
+        <span class="bal">Balance: <b id="ubTotal">—</b></span>
+        <button class="maxbtn" id="max">MAX</button>
+      </div>
+      <div class="row">
+        <input class="bigamt" id="pay" type="number" min="0" step="any" placeholder="0.0" inputmode="decimal"/>
+        <span class="tokbtn" style="cursor:default">
+          <span class="av"><img src="assets/usdc.png" alt="" width="24" height="24"/></span>
+          <span class="sym">USDC</span>
+        </span>
+      </div>
+      <div class="fiat" id="payFiat"></div>
+
+      <!-- Arc is the default source because spending USDC that is already here costs one
+           signature and no Gateway round trip. The unified balance is offered, not imposed. -->
+      <div class="srcbox" id="srcbox" hidden>
+        <label class="src" id="srcArcRow">
+          <input type="radio" name="src" id="srcArc" value="arc" checked/>
+          <span class="t">USDC on Arc<i id="srcArcAmt">—</i></span>
+        </label>
+        <label class="src" id="srcUbRow">
+          <input type="radio" name="src" id="srcUb" value="unified"/>
+          <span class="t">Unified balance<i id="srcUbAmt">—</i></span>
+          <span class="srcnote" id="srcUbNote"></span>
+        </label>
+
+        <!-- USDC in the wallet is not in the unified balance until it is deposited into
+             Gateway. Without this the balance reads 0.00 after a faucet run and nothing on
+             screen explains why. -->
+        <div class="dep" id="dep" hidden>
+          <div class="depnote">
+            USDC sitting in your wallet is not part of the unified balance yet — deposit it on
+            the chain it is on, once per chain.
+          </div>
+          <div class="deprow">
+            <div class="chainsel">
+              <button class="chainbtn" id="depChain" data-chain="Arc_Testnet"><span id="depChainName">Arc Testnet</span><i>▾</i></button>
+              <div class="chainpop" id="chainPop" hidden></div>
+            </div>
+            <input id="depAmt" type="number" min="0" step="any" placeholder="0.00" inputmode="decimal"/>
+            <button class="btn" id="depGo">Deposit</button>
+          </div>
+          <div class="err2" id="depErr" style="margin-top:8px"></div>
+        </div>
+      </div>
+      <div class="chainlist" id="breakdown"></div>
+    </div>
+
+    <div class="flip2">
+      <button id="flip" title="Unified balance pays in, the coin comes out" aria-label="Direction">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M10 3.6v12.8M10 16.4 6.2 12.6M10 16.4l3.8-3.8"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="leg2">
+      <div class="lbl">
+        <span>You receive</span>
+        <span class="bal" id="outBal"></span>
+      </div>
+      <div class="row">
+        <input class="bigamt" id="recv" placeholder="0.0" disabled/>
+        <button class="tokbtn empty" id="pick">
+          <span class="sym" id="pickSym">Select token</span><i class="chev">▼</i>
+        </button>
+      </div>
+      <div class="fiat" id="recvFiat"></div>
+    </div>
+
+    <!-- What the trade actually costs. A swap screen without these is asking someone to sign
+         for a number they were never shown. -->
+    <div class="terms" id="terms" hidden>
+      <div class="tr"><span>Rate</span><b id="tRate">—</b></div>
+      <div class="tr"><span>Minimum received</span><b id="tMin">—</b></div>
+      <div class="tr"><span>Slippage tolerance</span>
+        <b><span class="slips" id="slips"></span><input class="slipin" id="slipCustom" type="number" min="0.1" max="50" step="0.1" placeholder="custom"/></b></div>
+      <div class="tr"><span>Swap fee · buy and sell <i class="q" title="Charged by the curve on every trade. Creator, protocol and referrer split it.">?</i></span><b id="tFee">—</b></div>
+      <div class="tr" id="routeRow"><span>Route</span><b id="tRoute">—</b></div>
+    </div>
+
+    <button class="btn btn-w cta" id="go" disabled>Enter an amount</button>
+
+    <div class="steps2" id="steps"></div>
+    <div class="err2" id="err"></div>
+    <div class="okbox" id="done" hidden></div>
+
+    <div class="infobar">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="10" cy="10" r="7.2"/><path d="M10 9.2v4.2M10 6.6v.1"/>
+      </svg>
+      <div>
+        Arc uses USDC for gas, so one balance covers both trading and fees. USDC held on Base,
+        Arbitrum, Optimism or Ethereum counts toward the unified balance and is pulled to Arc
+        only when a trade needs it.
+      </div>
+    </div>
+  </div>
+
+</main></div></div>
+
+<!-- Token picker. Paste an address or type a ticker; coins launched here are listed already. -->
+<div class="tokwrap" id="tokwrap">
+  <div class="toksheet" role="dialog" aria-label="Select a token">
+    <div class="tokhd"><b>Select a token</b><button id="tokClose" aria-label="Close">×</button></div>
+    <div class="toksearch">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="9" cy="9" r="6.1"/><path d="m13.6 13.6 3.2 3.2"/>
+      </svg>
+      <input id="tokQ" placeholder="Search name, ticker or paste an address" autocomplete="off" spellcheck="false"/>
+    </div>
+    <div id="tokWarn"></div>
+    <div class="toklabel" id="tokLabel">Launched on Hexapus</div>
+    <div class="toklist" id="tokList"></div>
+  </div>
+</div>
+
+<script src="assets/config.js?v=14"></script>
+<script src="assets/web3.bundle.js?v=16"></script>
+<script src="assets/swap.bundle.js?v=6"></script>
+<script src="assets/shell.js?v=17"></script>
+<script>
+hexaShell.mount({ active: 'swap' });
+
+const HEXA_API = window.HEXA_CONFIG?.hexaApi || localStorage.hexaApi || 'http://127.0.0.1:8880';
+const ARC_ID = window.HEXA_CONFIG?.chainId ?? 5042002;
+const $ = (id) => document.getElementById(id);
+const short = (a) => a.slice(0, 6) + '…' + a.slice(-4);
+const money = (n) => '$' + (Number(n) || 0).toFixed(2);
+const qty = (n) => n >= 1e6 ? (n / 1e6).toFixed(2) + 'M' : n >= 1e3 ? (n / 1e3).toFixed(1) + 'K' : n.toFixed(2);
+
+const WARN_ICON = `<svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+  <path d="M10 2.9 18.4 16.6H1.6z" fill="#ffbe3c" stroke="#ffbe3c" stroke-width="1.4"
+        stroke-linejoin="round"/>
+  <path d="M10 7.6v4" stroke="#c8102e" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="10" cy="14.3" r="1.05" fill="#c8102e"/></svg>`;
+
+let ub = null;        // { total, byChain } from the unified balance, null if unreachable
+let arcBal = 0;       // plain USDC balance on Arc — the default source
+let token = null;     // { address, symbol, name, image, curve, hexapus }
+let listed = [];      // coins launched here, from the indexer
+let lastQuote = null; // { out, min, fee } backing the terms panel
+
+/* ── unified balance ──────────────────────────────────────────────────────── */
+
+document.addEventListener('hexa:account', (e) => { if (e.detail) loadBalance(); });
+
+/**
+ * Arc's own USDC comes from the chain, not the Gateway — it is the wallet's native balance here,
+ * and it is what the page spends by default. The unified balance is read alongside it and only
+ * matters when Arc alone cannot cover the trade.
+ */
+async function loadBalance() {
+  const account = hexa.currentAccount();
+  if (!account) return;
+  try {
+    arcBal = Number(hexa.formatEther(await hexa.pub.getBalance({ address: account })));
+  } catch { arcBal = 0; }
+  $('srcArcAmt').textContent = arcBal.toFixed(2);
+
+  try {
+    ub = await hexaSwap.balances();
+  } catch {
+    // The Gateway not answering must not take the page down — Arc funds still spend.
+    ub = null;
+    $('srcUbAmt').textContent = '—';
+    $('srcUbNote').textContent = 'unavailable';
+  }
+  if (ub) {
+    $('srcUbAmt').textContent = Number(ub.total).toFixed(2);
+    $('srcUbNote').textContent = '';
+    // Naming the chains is the difference between "one balance" as a slogan and something the
+    // user can check. It also explains a signature request on a chain they did not pick.
+    $('breakdown').innerHTML = ub.byChain.length
+      ? 'Across ' + ub.byChain.map((r) => `${r.name} <b>${Number(r.amount).toFixed(2)}</b>`).join(' · ')
+      : '';
+  }
+  $('srcbox').hidden = false;
+  paintBalance();
+  gate();
+  loadWallet();
+}
+
+/** The headline balance follows whichever source is selected. */
+function paintBalance() {
+  $('ubTotal').textContent = spendable().toFixed(2);
+}
+
+const usingUnified = () => $('srcUb').checked;
+const spendable = () => usingUnified() ? Number(ub?.total ?? 0) : arcBal;
+
+for (const id of ['srcArc', 'srcUb']) {
+  $(id).addEventListener('change', () => {
+    $('dep').hidden = !usingUnified();
+    paintBalance(); quote(); gate();
+  });
+}
+
+
+
+/**
+ * Chain picker. Each row carries what the wallet holds there, because the question being asked
+ * is "which chain do I have USDC on to deposit" — a bare list of names does not answer it.
+ */
+let wallet = {};   // chain -> USDC in the wallet, absent when that chain could not be read
+function paintChains() {
+  $('chainPop').innerHTML = hexaSwap.CHAINS.map((c) => {
+    const amt = wallet[c.chain];
+    const shown = amt === undefined ? '—' : amt.toFixed(2);
+    return `<button class="chainopt" data-chain="${c.chain}" data-name="${c.name}"
+      aria-selected="${c.chain === $('depChain').dataset.chain}">${c.name}
+      <b class="${amt > 0 ? '' : 'zero'}">${shown}</b></button>`;
+  }).join('');
+}
+
+$('depChain').addEventListener('click', () => {
+  $('chainPop').hidden = !$('chainPop').hidden;
+  if (!$('chainPop').hidden) paintChains();
+});
+
+document.addEventListener('click', (e) => {
+  if (!$('chainPop').hidden && !e.target.closest('.chainsel')) $('chainPop').hidden = true;
+});
+
+$('chainPop').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-chain]'); if (!b) return;
+  $('depChain').dataset.chain = b.dataset.chain;
+  $('depChainName').textContent = b.dataset.name;
+  $('chainPop').hidden = true;
+  // Pre-fill with the whole balance: depositing all of it is the common case, and the number
+  // is right there on the row they just clicked.
+  const amt = wallet[b.dataset.chain];
+  if (amt > 0) $('depAmt').value = amt.toFixed(2);
+});
+
+/** Read once the wallet is known, then again after every deposit. */
+async function loadWallet() {
+  const account = hexa.currentAccount();
+  if (!account) return;
+  wallet = await hexaSwap.walletUsdc(account);
+  if (!$('chainPop').hidden) paintChains();
+}
+
+$('depGo').addEventListener('click', async () => {
+  const amount = Number($('depAmt').value), btn = $('depGo');
+  $('depErr').textContent = '';
+  if (!(amount > 0)) { $('depErr').textContent = 'Enter an amount to deposit.'; return; }
+  btn.disabled = true; btn.textContent = 'Confirm in wallet…';
+  try {
+    await hexaSwap.deposit({ chain: $('depChain').dataset.chain, amount: amount.toFixed(6) });
+    $('depAmt').value = '';
+    await Promise.all([loadBalance(), loadWallet()]);
+  } catch (e) {
+    $('depErr').textContent = e.shortMessage ?? e.message;
+  }
+  btn.disabled = false; btn.textContent = 'Deposit';
+});
+
+/* ── token picker ─────────────────────────────────────────────────────────── */
+
+const isAddr = (v) => /^0x[0-9a-fA-F]{40}$/.test(v.trim());
+
+async function loadListed() {
+  try {
+    listed = await (await fetch(`${HEXA_API}/launches?limit=200`, { cache: 'no-store' })).json();
+  } catch { listed = []; }
+}
+
+const rowHtml = (t) => `<button class="tokrow" data-addr="${t.address}">
+  <span class="av">${hexaShell.art(t.address, t.image, { eager: true })}</span>
+  <span class="who"><b>${t.symbol ?? '???'}</b><span>${t.name ?? ''} · ${short(t.address)}</span></span>
+  ${t.hexapus ? '' : `<span class="warnpill">${WARN_ICON}Unverified</span>`}</button>`;
+
+const fromLaunch = (r) => ({
+  address: r.token, symbol: r.symbol, name: r.name,
+  image: r.image, curve: r.curve, hexapus: true,
+});
+
+/**
+ * An address that is not one of ours still resolves — the ERC-20 is read straight off Arc — but
+ * it is never quietly presented as equivalent. Hexapus knows nothing about its curve, its
+ * liquidity or its owner, and the badge says exactly that before anyone commits funds.
+ */
+async function resolveUnknown(address) {
+  const [symbol, name] = await Promise.all([
+    hexa.read(address, 'HexaToken', 'symbol', []).catch(() => null),
+    hexa.read(address, 'HexaToken', 'name', []).catch(() => null),
+  ]);
+  if (symbol === null && name === null) return null;
+  return { address, symbol: symbol ?? '???', name: name ?? 'Unknown token', image: null,
+           curve: null, hexapus: false };
+}
+
+async function renderPicker() {
+  const q = $('tokQ').value.trim();
+  const list = $('tokList'), warn = $('tokWarn'), label = $('tokLabel');
+  warn.innerHTML = '';
+
+  if (isAddr(q)) {
+    const mine = listed.find((r) => r.token?.toLowerCase() === q.toLowerCase());
+    if (mine) {
+      label.textContent = 'Launched on Hexapus';
+      list.innerHTML = rowHtml(fromLaunch(mine));
+      return;
+    }
+    label.textContent = 'Search results';
+    list.innerHTML = `<div class="tokempty">Reading the contract on Arc…</div>`;
+    const t = await resolveUnknown(q);
+    if (!t) {
+      list.innerHTML = `<div class="tokempty">Nothing at that address on Arc — check the network and the address.</div>`;
+      return;
+    }
+    warn.innerHTML = `<div class="warnbox">${WARN_ICON}<div>
+      <b>Not launched on Hexapus.</b> This contract was found on Arc but did not come from our
+      factory, so none of the guarantees on this site apply to it — no bonding curve, no locked
+      liquidity, no sell-tax schedule. Check it yourself before trading.</div></div>`;
+    list.innerHTML = rowHtml(t);
+    return;
+  }
+
+  const term = q.toLowerCase();
+  const hits = listed.filter((r) => !term
+    || (r.symbol ?? '').toLowerCase().includes(term)
+    || (r.name ?? '').toLowerCase().includes(term));
+  label.textContent = term ? 'Search results' : 'Launched on Hexapus';
+  list.innerHTML = hits.length
+    ? hits.map((r) => rowHtml(fromLaunch(r))).join('')
+    : `<div class="tokempty">No coin here matches “${q}”. Paste a contract address to look it up on Arc.</div>`;
+}
+
+function openPicker() {
+  $('tokwrap').classList.add('on');
+  $('tokQ').value = ''; $('tokQ').focus();
+  renderPicker();
+}
+const closePicker = () => $('tokwrap').classList.remove('on');
+
+$('pick').addEventListener('click', openPicker);
+$('tokClose').addEventListener('click', closePicker);
+$('tokwrap').addEventListener('click', (e) => { if (e.target === $('tokwrap')) closePicker(); });
+$('tokQ').addEventListener('input', renderPicker);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePicker(); });
+
+$('tokList').addEventListener('click', async (e) => {
+  const row = e.target.closest('[data-addr]');
+  if (!row) return;
+  const addr = row.dataset.addr;
+  const mine = listed.find((r) => r.token?.toLowerCase() === addr.toLowerCase());
+  token = mine ? fromLaunch(mine) : await resolveUnknown(addr);
+  closePicker();
+  paintToken();
+  // Re-quote here too, not only on amount input: picking the coin after typing the amount is the
+  // normal order, and without this the receive field stayed empty until the amount was retyped.
+  quote();
+  gate();
+});
+
+function paintToken() {
+  const btn = $('pick');
+  if (!token) { btn.className = 'tokbtn empty'; $('pickSym').textContent = 'Select token'; return; }
+  btn.className = 'tokbtn';
+  btn.innerHTML = `<span class="av">${hexaShell.art(token.address, token.image, { eager: true })}</span>` +
+    `<span class="sym" id="pickSym">${token.symbol}</span>` +
+    (token.hexapus ? '' : `<span class="warnpill">${WARN_ICON}</span>`) + `<i class="chev">▼</i>`;
+  $('outBal').innerHTML = token.hexapus ? '' :
+    `<span style="color:#ffcf5a">not from Hexapus</span>`;
+}
+
+/* ── quote and gate ───────────────────────────────────────────────────────── */
+
+$('pay').addEventListener('input', () => { quote(); gate(); });
+
+$('max').addEventListener('click', () => {
+  const b = spendable();
+  if (!(b > 0)) return;
+  // Arc's gas is USDC, so spending the literal balance leaves nothing to pay the fee with. The
+  // unified balance mints on Arc and does not have that problem.
+  $('pay').value = (usingUnified() ? b : Math.max(0, b - GAS_BUFFER)).toFixed(2);
+  quote(); gate();
+});
+
+$('flip').addEventListener('click', () => {
+  $('err').textContent = 'Selling back to your unified balance is not wired yet — this direction '
+    + 'pays USDC in and takes the coin out.';
+});
+
+/**
+ * The received amount is quoted off the coin's own curve, not guessed from a price. For a token
+ * we did not launch there is no curve to ask, so the field stays empty rather than inventing a
+ * number next to a warning badge.
+ */
+async function quote() {
+  const usdc = Number($('pay').value);
+  $('payFiat').textContent = usdc > 0 ? '≈ ' + money(usdc) : '';
+  if (!token?.curve || !(usdc > 0)) {
+    $('recv').value = ''; $('recvFiat').textContent = '';
+    $('terms').hidden = true; lastQuote = null;
+    return;
+  }
+  try {
+    const inWei = hexa.parseEther(String(usdc));
+    // Fee and sell tax are read off the curve, not assumed: both are per-coin and the tax decays
+    // block by block, so a hardcoded number here would be wrong within minutes of a launch.
+    const [out, feeBps, taxBps] = await Promise.all([
+      hexa.read(token.curve, 'HexaCurve', 'quoteBuy', [inWei]),
+      hexa.read(token.curve, 'HexaCurve', 'FEE_BPS', []).catch(() => null),
+      hexa.read(token.curve, 'HexaCurve', 'sellTaxBps', []).catch(() => null),
+    ]);
+    const min = (out * (10_000n - BigInt(Math.round(slipPct * 100)))) / 10_000n;
+    const outN = Number(hexa.formatEther(out));
+    lastQuote = { out, min };
+
+    $('recv').value = qty(outN);
+    $('recvFiat').textContent = '≈ ' + money(usdc);
+    $('terms').hidden = false;
+    $('tRate').textContent = `1 USDC ≈ ${qty(outN / usdc)} ${token.symbol}`;
+    $('tMin').textContent = `${qty(Number(hexa.formatEther(min)))} ${token.symbol}`;
+    $('tFee').textContent = feeBps === null ? '—'
+      : `${(Number(feeBps) / 100).toFixed(2)}%  ·  ${money(usdc * Number(feeBps) / 10_000)}`;
+    paintRoute(usdc);
+  } catch {
+    $('recv').value = ''; $('recvFiat').textContent = 'No quote available.';
+    $('terms').hidden = true; lastQuote = null;
+  }
+}
+
+/** Says plainly whether the trade is one signature on Arc or a Gateway pull first. */
+function paintRoute(usdc) {
+  if (!usingUnified()) { $('tRoute').textContent = 'Direct on Arc'; return; }
+  const here = hexaSwap.onArc(ub ?? { byChain: [] });
+  if (here >= usdc) { $('tRoute').textContent = 'Direct on Arc'; return; }
+  const need = usdc - here;
+  const src = (ub?.byChain ?? []).find((r) => r.chain !== 'Arc_Testnet' && Number(r.amount) >= need);
+  $('tRoute').textContent = src
+    ? `${src.name} → Arc, then the curve`
+    : 'No single chain covers the shortfall';
+}
+
+$('slips').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-s]'); if (!b) return;
+  slipPct = Number(b.dataset.s);
+  paintSlip(); quote();
+});
+function paintSlip() {
+  $('slips').innerHTML = [0.5, 1, 3]
+    .map((v) => `<button data-s="${v}" aria-selected="${v === slipPct}">${v}%</button>`).join('');
+  // The box only carries a value when it is the one in force, so a preset click clears it.
+  if ([0.5, 1, 3].includes(slipPct)) $('slipCustom').value = '';
+}
+
+$('slipCustom').addEventListener('input', () => {
+  const v = Number($('slipCustom').value);
+  if (!(v > 0) || v > 50) return;
+  slipPct = v;
+  for (const b of $('slips').querySelectorAll('button')) b.setAttribute('aria-selected', 'false');
+  quote();
+});
+
+function gate() {
+  const btn = $('go'), usdc = Number($('pay').value);
+  const account = hexa.currentAccount();
+  let label = 'Swap', ok = true;
+  if (!account) { label = 'Connect wallet'; ok = false; }
+  // Being on the wrong network is not a reason to refuse — it is a button. The trade stays
+  // exactly as entered; only the wallet moves.
+  else if (wrongChain) { label = hexa.arcMissing ? 'Add Arc Testnet' : 'Switch to Arc Testnet'; }
+  else if (!token) { label = 'Select a token'; ok = false; }
+  else if (!(usdc > 0)) { label = 'Enter an amount'; ok = false; }
+  else if (!token.hexapus) { label = 'Unsupported token'; ok = false; }
+  else if (usdc > spendable()) {
+    // Point at the way out rather than just refusing: the money may well be there, one radio
+    // button away, and "Not enough USDC" alone would send them to a faucet they do not need.
+    ok = false;
+    label = !usingUnified() && ub && usdc <= Number(ub.total)
+      ? 'Switch to unified balance' : 'Not enough USDC';
+  }
+  btn.textContent = label;
+  btn.disabled = !ok;
+}
+
+/* ── execution ────────────────────────────────────────────────────────────── */
+
+/** Starts at the coin terminal's default, so the same trade quotes the same either way. */
+let slipPct = 1;
+/** Held back by MAX on Arc so the buy still has gas. Generous — a failed trade costs more. */
+const GAS_BUFFER = 0.05;
+const STEPS = [['pull', 'Pull USDC to Arc'], ['buy', 'Buy on the curve']];
+function paintSteps(state) {
+  $('steps').className = 'steps2 on';
+  $('steps').innerHTML = STEPS.map(([k, t], i) =>
+    `<div class="st ${state[k] ?? ''}"><span class="dot">${state[k] === 'ok' ? '✓' : i + 1}</span>
+     <span class="t">${t}</span></div>`).join('');
+}
+
+/** Kept in step with the wallet, so the button can say what is actually wrong. */
+let wrongChain = false;
+async function checkChain() {
+  if (!hexa.currentAccount()) { wrongChain = false; return; }
+  const id = await hexa.walletChainId();
+  wrongChain = id !== null && id !== ARC_ID;
+  gate();
+}
+document.addEventListener('hexa:chain', checkChain);
+document.addEventListener('hexa:account', checkChain);
+
+$('go').addEventListener('click', async () => {
+  const btn = $('go');
+  if (wrongChain) {
+    btn.disabled = true;
+    $('err').textContent = '';
+    try {
+      await hexa.ensureArc();
+      await checkChain();
+    } catch (e) {
+      $('err').textContent = e.shortMessage ?? e.message;
+      gate();
+    }
+    return;
+  }
+  const usdc = Number($('pay').value), account = hexa.currentAccount();
+  btn.disabled = true;
+  $('err').textContent = ''; $('done').hidden = true;
+  const state = {};
+
+  try {
+    // Only reach for the Gateway when the unified balance was chosen AND Arc alone cannot cover
+    // it. A user whose USDC is already here should never sign a cross-chain burn to spend it.
+    const here = usingUnified() ? hexaSwap.onArc(ub) : arcBal;
+    if (usingUnified() && here < usdc) {
+      const need = usdc - here;
+      const source = ub.byChain.find((r) => r.chain !== 'Arc_Testnet' && Number(r.amount) >= need);
+      if (!source) throw new Error(`No single chain holds the ${need.toFixed(2)} USDC still needed. Split the trade or top up.`);
+      state.pull = 'run'; paintSteps(state);
+      await hexaSwap.spendToArc({ from: source.chain, amount: need.toFixed(6), recipient: account });
+      state.pull = 'ok';
+    } else {
+      state.pull = 'ok';
+    }
+    state.buy = 'run'; paintSteps(state);
+
+    // `buy` is payable and USDC is Arc's native token, so the amount rides as value — it is not
+    // an argument. Slippage floor rather than 0: accepting any fill on a public mempool with
+    // first-come-first-served ordering is an open invitation to be sandwiched.
+    const inWei = hexa.parseEther(String(usdc));
+    // Re-quote at submit: the panel's figure may be seconds old, and the floor has to be derived
+    // from what the curve says now or the trade reverts on a price that moved in the user's
+    // favour. `lastQuote.min` is what they were shown — the floor never goes below it.
+    const fresh = await hexa.read(token.curve, 'HexaCurve', 'quoteBuy', [inWei]);
+    const floor = (fresh * (10_000n - BigInt(Math.round(slipPct * 100)))) / 10_000n;
+    await hexa.write(token.curve, 'HexaCurve', 'buy',
+      [floor < lastQuote.min ? floor : lastQuote.min, account,
+       '0x0000000000000000000000000000000000000000'], inWei);
+    state.buy = 'ok'; paintSteps(state);
+
+    $('done').hidden = false;
+    $('done').innerHTML = `Bought <b>${token.symbol}</b>. `
+      + `<a href="coin.html?token=${token.address}&curve=${token.curve}">Open the coin ↗</a>`;
+    await loadBalance();
+  } catch (e) {
+    for (const k of Object.keys(state)) if (state[k] === 'run') state[k] = 'err';
+    paintSteps(state);
+    $('err').textContent = e.shortMessage ?? e.message;
+  }
+  gate();
+});
+
+loadListed();
+paintToken();
+paintSlip();
+gate();
+checkChain();
+</script>
+</body>
+</html>

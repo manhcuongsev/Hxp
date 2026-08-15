@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node contracts/compile.mjs && node scripts/build-site.mjs",
+  "outputDirectory": "site",
+  "installCommand": "npm install",
+  "framework": null,
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=300, must-revalidate" }]
+    }
+  ]
+}

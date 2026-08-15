@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Hexapus — fair launch on Arc</title>
+<link rel="stylesheet" href="assets/app.css?v=20"/>
+<style>
+  /* The hero owns the whole content area, so main's own padding is cancelled here. */
+  body main{padding:0;max-width:none}
+  .stage{
+    position:relative;overflow:hidden;isolation:isolate;
+    min-height:calc(100vh - 61px);          /* 61px is the sticky top bar */
+    display:grid;place-items:center;padding:40px 22px 64px;
+  }
+
+  /* ── drifting meme wall ──────────────────────────────── */
+  .memes{position:absolute;inset:-6%;z-index:0;pointer-events:none}
+  .memes img{
+    position:absolute;border-radius:22%;display:block;
+    will-change:transform;                   /* blur is static; only transform animates */
+    animation:drift var(--dur,10s) ease-in-out var(--del,0s) infinite alternate;
+  }
+  @keyframes drift{ from{transform:translateY(var(--from,14px))} to{transform:translateY(var(--to,-14px))} }
+
+  /* Reads the icons as depth-of-field rather than as clutter, and keeps the centre legible. */
+  .veil{
+    position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:
+      radial-gradient(58% 52% at 50% 50%, rgba(10,11,14,.97) 0%, rgba(10,11,14,.9) 38%, rgba(10,11,14,.45) 68%, rgba(10,11,14,.1) 100%),
+      radial-gradient(120% 80% at 50% 120%, rgba(168,85,247,.13), transparent 60%);
+  }
+
+  /* ── centre stack ────────────────────────────────────── */
+  .core{position:relative;z-index:2;text-align:center;max-width:760px}
+  .core .mark{width:168px;height:auto;display:block;margin:0 auto 26px;
+    filter:drop-shadow(0 18px 46px rgba(192,96,240,.42))}
+  .core h1{
+    font-size:clamp(46px,7.4vw,84px);line-height:1;letter-spacing:-.045em;font-weight:800;
+    margin-bottom:16px;
+  }
+  /* One line: the sentence is the product description and breaking it mid-clause reads badly.
+     Below the width where it fits, wrapping is better than shrinking it into illegibility. */
+  .core p{color:var(--muted);font-size:18.5px;line-height:1.6;margin:0 auto 30px;white-space:nowrap}
+  @media(max-width:760px){ .core p{white-space:normal;max-width:440px} }
+  .cta{
+    display:inline-flex;align-items:center;gap:9px;padding:14px 30px;border-radius:999px;
+    font-size:16.5px;font-weight:650;color:#fff;border:0;
+    background:linear-gradient(135deg,#f078f0,#a848f0);
+    box-shadow:0 12px 34px -10px rgba(192,96,240,.6);
+    transition:transform .14s,box-shadow .18s,filter .18s;
+  }
+  .cta:hover{transform:translateY(-2px);filter:brightness(1.07);box-shadow:0 18px 44px -12px rgba(192,96,240,.75)}
+  .cta:active{transform:translateY(0)}
+
+  @media(max-width:640px){ .core .mark{width:124px} }
+  @media (prefers-reduced-motion:reduce){ .memes img{animation:none} }
+</style>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body">
+  <main>
+    <section class="stage">
+      <div class="memes" id="memes" aria-hidden="true"></div>
+      <div class="veil"></div>
+
+      <div class="core">
+        <img class="mark" src="assets/hexapus-logo.webp" alt="Hexapus"/>
+        <h1>Fair launch, priced in <em class="iris">dollars</em>.</h1>
+        <p>The meme launchpad and AMM built for Arc, where USDC <em>is</em> the gas.</p>
+        <a class="cta" href="create.html">Create a coin</a>
+      </div>
+    </section>
+  </main>
+</div></div>
+
+<script src="assets/config.js?v=14"></script>
+<script src="assets/web3.bundle.js?v=16"></script>
+<script src="assets/shell.js?v=17"></script>
+<script>
+hexaShell.mount({ active: 'home' });
+
+/**
+ * The meme wall. Positions come from a fixed grid with per-cell jitter rather than a plain
+ * random scatter: random alone clumps and leaves bald patches, and it would also reshuffle on
+ * every load, so the page would never look the same twice.
+ */
+(() => {
+  const FILES = ['10804','20700','23095','24478','24911','27048','27750','28081','28752','28782',
+                 '29743','29870','30933','33280','33881','34466','35347','35491','36532','36743',
+                 '38590','40588','40809','40939','40944','5994','74'];
+
+  const COLS = 7, ROWS = 4;
+  // one deterministic sequence, so the layout is identical on every visit
+  let seed = 20260813;
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+
+  const host = document.getElementById('memes');
+  const frag = document.createDocumentFragment();
+
+  FILES.forEach((name, i) => {
+    const col = i % COLS, row = Math.floor(i / COLS);
+    const img = document.createElement('img');
+    img.alt = '';
+    img.decoding = 'async';
+
+    // Bigger icons read as nearer the camera, so they carry more blur and sit slightly brighter.
+    const depth = rnd();
+    const size = 38 + depth * 62;
+    const blur = 1.1 + depth * 5.6;
+    const dur = 7 + rnd() * 7;
+    const amp = 10 + rnd() * 16;
+
+    img.style.cssText =
+      `left:${((col + .5 + (rnd() - .5) * .74) / COLS * 100).toFixed(2)}%;` +
+      `top:${((row + .5 + (rnd() - .5) * .74) / ROWS * 100).toFixed(2)}%;` +
+      `width:${size.toFixed(0)}px;height:${size.toFixed(0)}px;` +
+      `margin:${(-size / 2).toFixed(0)}px 0 0 ${(-size / 2).toFixed(0)}px;` +
+      `filter:blur(${blur.toFixed(1)}px);opacity:${(.42 + depth * .34).toFixed(2)};` +
+      `rotate:${((rnd() - .5) * 34).toFixed(1)}deg;` +
+      `--dur:${dur.toFixed(1)}s;--del:${(-rnd() * dur).toFixed(1)}s;` +
+      `--from:${amp.toFixed(0)}px;--to:${(-amp).toFixed(0)}px;`;
+
+    // src last, and never loading="lazy": every icon sits in the first viewport, so lazy would
+    // defer images that are already on screen — which is exactly what it did.
+    img.src = `assets/memes/${name}.png`;
+    frag.appendChild(img);
+  });
+
+  host.appendChild(frag);
+})();
+</script>
+</body>
+</html>

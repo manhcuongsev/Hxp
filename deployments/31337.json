@@ -1,0 +1,23 @@
+{
+  "chainId": 31337,
+  "rpc": "http://127.0.0.1:8545",
+  "deployer": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "deployedAt": "2026-08-13T01:56:47.192Z",
+  "deployBlock": 711,
+  "usdc": "0xcbeaf3bde82155f56486fb5a1072cb8baaf547cc",
+  "v3Factory": "0x1429859428c0abc9c2c47c8ee9fbaf82cfa0f20f",
+  "factory": "0xb0d4afd8879ed9f52b28595d31b441d079b2ca07",
+  "vault": "0x7B6fCB97Fc1B74e16CBe577054a4426d3487837C",
+  "migrator": "0x162a433068f51e18b7d13932f27e66a3f99e6890",
+  "locker": "0x922d6956c99e12dfeb3224dea977d0939758a1fe",
+  "treasury": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "defaults": {
+    "guardBlocks": "300",
+    "taxBlocks": "3000",
+    "maxBuyBps": "50",
+    "sellTaxStartBps": "9000",
+    "sellTaxFloorBps": "100",
+    "creatorMaxBps": "300",
+    "minBuyIn": "500000000000000000"
+  }
+}

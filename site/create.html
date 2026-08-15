@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Create new coin — Hexapus</title>
+<link rel="stylesheet" href="assets/app.css?v=20"/>
+<style>
+  .layout{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start;max-width:1160px}
+  @media(max-width:980px){.layout{grid-template-columns:1fr}}
+
+  .block{padding:22px 24px;margin-bottom:16px}
+  .block > h3{font-size:16px;font-weight:620;margin-bottom:3px}
+  .block > .hint{font-size:13.5px;color:var(--dim);margin-bottom:18px;line-height:1.55}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+  .f{margin-bottom:14px}
+  .f label{display:block;font-size:14px;font-weight:550;margin-bottom:6px}
+  .f label span{color:var(--dim);font-weight:400}
+  .f .note{font-size:12.5px;color:var(--dim);margin-top:5px;line-height:1.5}
+  input[type=text],input[type=number],select,textarea{
+    width:100%;padding:10px 13px;border-radius:10px;font:inherit;font-size:15px;color:var(--ink);
+    background:rgba(255,255,255,.04);border:1px solid var(--line);outline:none;
+  }
+  textarea{min-height:88px;resize:vertical;line-height:1.6}
+  input:focus,select:focus,textarea:focus{border-color:rgba(232,121,249,.5)}
+  input::placeholder,textarea::placeholder{color:var(--dim)}
+
+  .drop{border:1px dashed rgba(255,255,255,.22);border-radius:14px;padding:34px 20px;text-align:center;
+    cursor:pointer;transition:border-color .16s,background .16s}
+  .drop:hover,.drop.over{border-color:rgba(232,121,249,.55);background:rgba(232,121,249,.04)}
+  .drop .pic-lg{width:38px;height:38px;display:block;margin:0 auto 12px;opacity:.62}
+  .drop b{display:block;font-size:15px;font-weight:600;margin-bottom:3px}
+  .drop i{display:block;font-style:normal;font-size:14px;color:var(--dim);margin-bottom:16px}
+  .drop .picked{font-size:13.5px;color:#e879f9;margin-top:12px;word-break:break-all}
+  .specs{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:18px}
+  @media(max-width:640px){.specs{grid-template-columns:1fr}}
+  .specs h4{font-size:13.5px;font-weight:600;margin:8px 0 6px}
+  .specs ul{margin:0;padding-left:16px}
+  .specs li{font-size:12.5px;color:var(--dim);line-height:1.75}
+  .specs .pic{width:19px;height:19px;display:block;opacity:.55}
+
+  .social-toggle{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:550;
+    cursor:pointer;padding:6px 0;color:var(--muted)}
+  .social-toggle:hover{color:var(--ink)}
+  .social-toggle .car{transition:transform .18s;font-size:12px}
+  .social-toggle[aria-expanded=true] .car{transform:rotate(180deg)}
+  #socials[hidden]{display:none}
+
+  .preview{position:sticky;top:80px}
+  .preview > h3{font-size:16px;font-weight:620;margin-bottom:14px}
+  .pv-card{border-radius:14px;overflow:hidden;background:var(--panel);border:1px solid var(--line)}
+  .pv-art{aspect-ratio:1/1;display:grid;place-items:center;font-size:65px;position:relative;
+    background:linear-gradient(150deg,#161a22,#0c0e13);border-bottom:1px solid var(--line);
+    background-size:cover;background-position:center}
+  .pv-body{padding:13px 14px}
+  .pv-nm{display:flex;align-items:baseline;gap:7px;margin-bottom:4px}
+  .pv-nm b{font-size:16px;font-weight:640}
+  .pv-nm span{font-size:13.5px;color:var(--dim)}
+  .pv-desc{font-size:13.5px;color:var(--muted);line-height:1.5;
+    display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .pv-links{display:flex;gap:7px;margin-top:10px}
+  .pv-links a{font-size:12px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.06);
+    border:1px solid rgba(255,255,255,.08);color:var(--muted)}
+  .pv-empty{padding:44px 20px;text-align:center;color:var(--dim);font-size:14px;line-height:1.6}
+
+  .steps{display:flex;flex-direction:column;gap:1px;background:var(--line);border-radius:13px;overflow:hidden;margin-top:16px}
+  .step{background:var(--panel);padding:13px 16px;display:flex;gap:12px;align-items:flex-start}
+  .step .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;flex:0 0 auto;
+    font:600 12px var(--num);border:1px solid var(--line);color:var(--dim)}
+  .step.on .n{border-color:#e879f9;color:#e879f9}
+  .step.done .n{background:#e879f9;color:#08090c;border-color:#e879f9}
+  .step .t{font-size:14px;font-weight:550}
+  .step .d{font-size:12.5px;color:var(--muted);margin-top:2px;line-height:1.5}
+</style>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body"><main>
+
+  <h1 style="font-size:26px;letter-spacing:-.02em;margin-bottom:22px">Create new coin</h1>
+
+  <div class="layout">
+    <div>
+      <section class="glass block">
+        <h3>Coin details</h3>
+        <div class="hint">Choose carefully — none of this can be changed once the coin is created.</div>
+
+        <div class="grid2">
+          <div class="f">
+            <label for="name">Coin name</label>
+            <input id="name" type="text" placeholder="Name your coin" maxlength="64"/>
+          </div>
+          <div class="f">
+            <label for="symbol">Ticker</label>
+            <input id="symbol" type="text" placeholder="Add a coin ticker (e.g. DOGE)" maxlength="12"/>
+          </div>
+        </div>
+
+        <div class="f">
+          <label for="desc">Description <span>(Optional)</span></label>
+          <textarea id="desc" placeholder="Write a short description" maxlength="500"></textarea>
+        </div>
+
+        <div class="f">
+          <label for="image">Image <span>(Optional)</span></label>
+          <input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4" hidden/>
+          <div class="drop" id="drop" role="button" tabindex="0">
+            <svg class="pic pic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="3" y="4.5" width="18" height="15" rx="2.5"/>
+              <circle cx="8.5" cy="10" r="1.6"/>
+              <path d="m3.6 17.2 4.9-4.6a1.7 1.7 0 0 1 2.3 0l3.4 3.2m0 0 1.9-1.8a1.7 1.7 0 0 1 2.3 0l2 1.9m-6.2-.1 2.4 2.2"/>
+            </svg>
+            <b>Select video or image to upload</b>
+            <i>or drag and drop it here</i>
+            <span class="btn btn-p" id="pick">Select file</span>
+            <div class="picked" id="picked" hidden></div>
+          </div>
+          <div class="specs">
+            <div>
+              <svg class="pic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 3h7l5 5v13H6z"/><path d="M13 3v5h5"/>
+              </svg>
+              <h4>File size and type</h4>
+              <ul>
+                <li>Image &mdash; max 15mb. '.jpg', '.gif' or '.png' recommended</li>
+                <li>Video &mdash; max 30mb. '.mp4' recommended</li>
+              </ul>
+            </div>
+            <div>
+              <svg class="pic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="3" y="4.5" width="18" height="15" rx="2.5"/>
+                <circle cx="8.5" cy="10" r="1.6"/>
+                <path d="m3.6 17.2 4.9-4.6a1.7 1.7 0 0 1 2.3 0l3.4 3.2m0 0 1.9-1.8a1.7 1.7 0 0 1 2.3 0l2 1.9"/>
+              </svg>
+              <h4>Resolution and aspect ratio</h4>
+              <ul>
+                <li>Image &mdash; min. 1000&times;1000px, 1:1 square recommended</li>
+                <li>Video &mdash; 1:1 square or 16:9, 1080p+ recommended</li>
+              </ul>
+            </div>
+          </div>
+          <div class="note" id="imgnote" style="color:#ff6b81"></div>
+        </div>
+
+        <div class="social-toggle" id="socialToggle" aria-expanded="false" role="button" tabindex="0">
+          <span>🔗</span> Add social links <span style="color:var(--dim);font-weight:400">(Optional)</span>
+          <span class="car">▾</span>
+        </div>
+        <div id="socials" hidden style="padding-top:12px">
+          <div class="grid2">
+            <div class="f"><label for="web">Website</label><input id="web" type="text" placeholder="Add URL"/></div>
+            <div class="f"><label for="x">X</label><input id="x" type="text" placeholder="Add URL"/></div>
+          </div>
+          <div class="f"><label for="tg">Telegram</label><input id="tg" type="text" placeholder="Add URL"/></div>
+        </div>
+      </section>
+
+      <section class="glass block">
+        <h3>Curve</h3>
+        <div class="hint">
+          Every coin opens at a <b>$2,000</b> market cap and graduates at <b>$29,392</b>, after
+          <b>$6,081</b> of buying. 79.31% of supply sells on the curve; the rest seeds the pool at
+          the price the curve closed at. Priced in dollars, so those numbers do not move when
+          anything else does.
+        </div>
+        <div class="f" style="margin-bottom:0">
+          <label for="devbuy">Buy in at launch <span>(Optional, USDC)</span></label>
+          <input id="devbuy" type="number" min="0" step="0.1" placeholder="0"/>
+          <div class="note">
+            <b>Minimum 0.5 USDC</b>, no maximum. Buying more of your own launch is allowed and
+            is not hidden — the share you end up holding is published on the coin's page, and
+            selling it early costs the same decaying tax as anyone else.
+          </div>
+          <div class="note" id="buynote" style="color:#ff6b81"></div>
+        </div>
+      </section>
+
+      <div class="glass block" id="costbox" style="padding:16px 20px">
+        <div class="row" style="display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0">
+          <span class="muted">Creation fee</span><span class="mono" id="cFee">—</span>
+        </div>
+        <div class="row" style="display:flex;justify-content:space-between;font-size:13.5px;padding:4px 0">
+          <span class="muted">Your buy-in</span><span class="mono" id="cBuy">$0.00</span>
+        </div>
+        <div class="row" style="display:flex;justify-content:space-between;font-size:14px;padding:8px 0 0;
+          border-top:1px solid var(--line);margin-top:6px;font-weight:600">
+          <span>Total</span><span class="mono" id="cTotal">—</span>
+        </div>
+        <div class="note" style="margin-top:8px">Plus gas, paid in USDC like everything else on Arc.</div>
+      </div>
+
+      <button class="btn btn-p" id="go" style="padding:12px 24px;font-size:14.5px" disabled>Create coin</button>
+      <div class="note" id="gonote">Add an image or video above — every coin needs artwork.</div>
+      <div class="note" id="err" style="color:#ff6b81;margin-top:10px"></div>
+    </div>
+
+    <div class="preview">
+      <h3>Preview</h3>
+      <div class="pv-card" id="pvCard">
+        <div class="pv-empty" id="pvEmpty">A preview of how the coin will look</div>
+        <div id="pvReal" hidden>
+          <div class="pv-art" id="pvArt">🐙</div>
+          <div class="pv-body">
+            <div class="pv-nm"><b id="pvSym">TICKER</b><span id="pvName">Coin name</span></div>
+            <div class="pv-desc" id="pvDesc"></div>
+            <div class="pv-links" id="pvLinks"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="steps" id="steps">
+        <div class="step" data-s="1"><div class="n">1</div><div>
+          <div class="t">Commit</div>
+          <div class="d">Publishes a hash and nothing else.</div></div></div>
+        <div class="step" data-s="2"><div class="n">2</div><div>
+          <div class="t">Wait 12 blocks</div>
+          <div class="d">So nobody can have been watching for it.</div></div></div>
+        <div class="step" data-s="3"><div class="n">3</div><div>
+          <div class="t">Reveal</div>
+          <div class="d">Token, curve and your buy-in, in one transaction.</div></div></div>
+      </div>
+
+      <p class="note" style="margin-top:14px">
+        Keep this tab open between the two steps. The salt exists only in this page.
+      </p>
+    </div>
+  </div>
+
+</main></div></div>
+
+<script src="assets/config.js?v=14"></script>
+<script src="assets/web3.bundle.js?v=16"></script>
+<script src="assets/shell.js?v=17"></script>
+<script>
+hexaShell.mount({ active: 'create' });
+
+const E18 = 10n ** 18n;
+const $ = (id) => document.getElementById(id);
+// Used by uploadArtwork below. It was referenced there without ever being declared on this
+// page, so every launch threw ReferenceError at the upload step — and once artwork became
+// mandatory that meant no coin could be created at all.
+const HEXA_API = window.HEXA_CONFIG?.hexaApi || localStorage.hexaApi || 'http://127.0.0.1:8880';
+
+/**
+ * Arc's public RPC rate-limits by IP and answers "Request exceeds defined limit". Between the
+ * commit and the reveal this page has to watch the head for a dozen blocks, and hitting that
+ * ceiling mid-wait used to surface the raw message and abandon a launch whose commit had
+ * already been paid for. Waiting and asking again is the correct response — the commit does
+ * not expire.
+ */
+const isRateLimited = (e) =>
+  /rate limit|too many requests|429|exceeds defined limit/i.test(e?.message ?? e?.shortMessage ?? '');
+
+/** Turns the two failures people actually hit into something they can act on. */
+const explain = (e) => {
+  const raw = e?.shortMessage || e?.message || String(e);
+  if (isRateLimited(e)) {
+    return 'Arc\'s public RPC is rate-limiting this browser. Wait about a minute and try again — ' +
+           'nothing was charged, and any commit you already paid for stays valid.';
+  }
+  if (/BelowMinBuy/i.test(raw)) return 'The buy-in is below the 0.5 USDC minimum.';
+  // Still mapped: coins launched before the cap was lifted keep the old limit in their curve.
+  if (/CreatorCap|creatorMax/i.test(raw)) {
+    return 'That buy-in is over the creator cap this coin was launched with.';
+  }
+  if (/User rejected|denied/i.test(raw)) return 'Cancelled in the wallet.';
+  return raw;
+};
+
+async function head(attempt = 0) {
+  try {
+    return await hexa.pub.getBlockNumber();
+  } catch (e) {
+    if (!isRateLimited(e) || attempt >= 6) throw e;
+    await new Promise((r) => setTimeout(r, 1000 * 2 ** attempt));
+    return head(attempt + 1);
+  }
+}
+const err = $('err'), steps = $('steps');
+const setStep = (n, cls) => steps.querySelector(`[data-s="${n}"]`)?.classList.add(cls);
+const clearSteps = () => steps.querySelectorAll('.step').forEach((s) => s.classList.remove('on', 'done'));
+
+// ── social links ────────────────────────────────────────────────────────────
+const toggle = $('socialToggle');
+const flipSocials = () => {
+  const open = toggle.getAttribute('aria-expanded') === 'true';
+  toggle.setAttribute('aria-expanded', String(!open));
+  $('socials').hidden = open;
+};
+toggle.addEventListener('click', flipSocials);
+toggle.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flipSocials(); } });
+
+// ── artwork ─────────────────────────────────────────────────────────────────
+const MAX_IMAGE = 15 * 1024 * 1024;
+const MAX_VIDEO = 30 * 1024 * 1024;
+let pickedFile = null;      // validated, not yet uploaded
+let uploadedUrl = null;     // set once the indexer has it
+
+/**
+ * Validated here before it is ever sent, and again on the indexer — a browser check only saves
+ * the upload, it does not enforce anything.
+ */
+$('image').addEventListener('change', async () => {
+  const note = $('imgnote');
+  note.textContent = '';
+  pickedFile = null; uploadedUrl = null;
+  showPicked();                       // cleared up front, so a rejected file leaves no label behind
+  const f = $('image').files?.[0];
+  if (!f) { gate(); return preview(); }
+
+  const isVideo = f.type.startsWith('video/');
+  const cap = isVideo ? MAX_VIDEO : MAX_IMAGE;
+  if (f.size > cap) {
+    note.textContent = `That ${isVideo ? 'video' : 'image'} is ${(f.size / 1024 / 1024).toFixed(1)} MB` +
+      ` — the limit is ${cap / 1024 / 1024} MB.`;
+    $('image').value = ''; gate(); return preview();
+  }
+  pickedFile = f;
+  showPicked();
+  gate();
+  preview();
+});
+
+/**
+ * Artwork is required. A coin with no image is the one nobody clicks in Explore, and there is
+ * no way to add one later — the metadata URI is fixed at reveal.
+ */
+function gate() {
+  const btn = $('go');
+  if (!btn) return;
+  btn.disabled = !pickedFile || !feeLoaded || !checkBuyIn();
+  $('gonote').hidden = !!pickedFile;
+}
+
+function showPicked() {
+  const el = $('picked');
+  el.hidden = !pickedFile;
+  if (pickedFile) el.textContent = `${pickedFile.name} · ${(pickedFile.size / 1024).toFixed(0)} KB`;
+}
+
+// The zone says "drag and drop it here", so it has to accept a drop. Both paths hand the file
+// to the same input, so validation runs once and cannot be skipped by dropping instead.
+$('drop').addEventListener('click', (e) => { if (e.target.id !== 'image') $('image').click(); });
+$('drop').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('image').click(); }
+});
+for (const type of ['dragenter', 'dragover']) {
+  $('drop').addEventListener(type, (e) => { e.preventDefault(); $('drop').classList.add('over'); });
+}
+for (const type of ['dragleave', 'drop']) {
+  $('drop').addEventListener(type, () => $('drop').classList.remove('over'));
+}
+$('drop').addEventListener('drop', (e) => {
+  e.preventDefault();
+  const f = e.dataTransfer?.files?.[0];
+  if (!f) return;
+  const dt = new DataTransfer(); dt.items.add(f);
+  $('image').files = dt.files;
+  $('image').dispatchEvent(new Event('change'));
+});
+
+async function uploadArtwork() {
+  if (!pickedFile) return null;
+  if (uploadedUrl) return uploadedUrl;          // already sent; do not send twice on a retry
+  const r = await fetch(`${HEXA_API}/upload`, {
+    method: 'POST', body: pickedFile, headers: { 'content-type': pickedFile.type },
+  });
+  if (!r.ok) throw new Error(`Artwork upload failed: ${(await r.json().catch(() => ({}))).error ?? r.status}`);
+  const { url } = await r.json();
+  uploadedUrl = new URL(url, HEXA_API).href;    // absolute, so it resolves away from this page
+  return uploadedUrl;
+}
+
+// ── live preview ────────────────────────────────────────────────────────────
+for (const id of ['name', 'symbol', 'desc', 'web', 'x', 'tg']) $(id).addEventListener('input', preview);
+
+function preview() {
+  const name = $('name').value.trim(), symbol = $('symbol').value.trim().toUpperCase();
+  const has = name || symbol || pickedFile;   // artwork alone is enough to show something back
+  $('pvEmpty').hidden = has; $('pvReal').hidden = !has;
+  if (!has) return;
+
+  $('pvSym').textContent = symbol || 'TICKER';
+  $('pvName').textContent = name || 'Coin name';
+  $('pvDesc').textContent = $('desc').value.trim();
+
+  const art = $('pvArt');
+  art.innerHTML = ''; art.style.backgroundImage = '';
+  if (pickedFile?.type === 'video/mp4') {
+    const v = document.createElement('video');
+    v.src = URL.createObjectURL(pickedFile);
+    v.autoplay = v.loop = v.muted = v.playsInline = true;
+    v.style.cssText = 'width:100%;height:100%;object-fit:cover';
+    art.appendChild(v);
+  } else if (pickedFile) {
+    art.style.backgroundImage = `url("${URL.createObjectURL(pickedFile)}")`;
+  } else {
+    art.textContent = '🐙';
+  }
+
+  $('pvLinks').innerHTML = [['web', 'Website'], ['x', 'X'], ['tg', 'Telegram']]
+    .filter(([id]) => $(id).value.trim())
+    .map(([, label]) => `<a>${label}</a>`).join('');
+}
+
+// ── cost ────────────────────────────────────────────────────────────────────
+// Read from the contract rather than hardcoded: the fee is owner-settable, and a number
+// typed into the page would quietly disagree with what the transaction actually costs.
+let creationFee = 0n;
+let feeLoaded = false;
+const usd2 = (wei) => '$' + (Number(wei) / 1e18).toFixed(2);
+
+hexa.read(hexa.addresses.factory, 'HexaFactory', 'creationFee')
+  .then((f) => { creationFee = f; feeLoaded = true; showCost(); gate(); })
+  .catch(() => {
+    // Refuse to proceed rather than guess. An unread fee defaults to zero, which would show
+    // a total missing the fee and then send a transaction the contract rejects outright —
+    // the user pays gas to be told something this page already knew.
+    $('cFee').textContent = 'unavailable';
+    $('cTotal').textContent = '—';
+    $('go').disabled = true;
+    err.textContent =
+      `Could not read the creation fee from ${hexa.addresses.factory.slice(0, 10)}… on Arc. ` +
+      `Creating is disabled until it responds — check that the factory address in ` +
+      `deployments/${hexa.addresses.chainId}.json is deployed on the chain your wallet is on.`;
+  });
+
+function showCost() {
+  const buyIn = $('devbuy').value ? hexa.parseEther($('devbuy').value) : 0n;
+  $('cBuy').textContent = usd2(buyIn);
+  if (!feeLoaded) return;
+  $('cFee').textContent = usd2(creationFee);
+  $('cTotal').textContent = usd2(creationFee + buyIn);
+}
+/**
+ * Only the floor is checked. `minBuyIn` is a flat 0.5 USDC and the reveal reverts below it, so
+ * it is worth catching before gas is spent on a commit that cannot be completed.
+ *
+ * There is deliberately no ceiling: the creator cap was lifted, and the 0.5%-per-wallet guard
+ * never applied to the creator in the first place.
+ */
+function checkBuyIn() {
+  const raw = $('devbuy').value.trim();
+  const bad = raw && Number(raw) > 0 && Number(raw) < 0.5
+    ? 'The contract rejects anything under 0.5 USDC.'
+    : '';
+  $('buynote').textContent = bad;
+  return !bad;
+}
+
+$('devbuy').addEventListener('input', () => { checkBuyIn(); showCost(); gate(); });
+
+
+/**
+ * Description and social links have nowhere on-chain to live — the contract stores a single
+ * metadataURI string. Rather than depend on a pinning service we do not run, the metadata is
+ * encoded into a data: URI, so it travels inside the launch event and is as permanent as the
+ * coin. An image URL is referenced, not embedded: images are too large to put in calldata.
+ */
+function buildMetadataURI(imageUrl) {
+  const meta = {
+    name: $('name').value.trim(),
+    symbol: $('symbol').value.trim().toUpperCase(),
+    description: $('desc').value.trim() || undefined,
+    image: imageUrl || undefined,
+    website: $('web').value.trim() || undefined,
+    x: $('x').value.trim() || undefined,
+    telegram: $('tg').value.trim() || undefined,
+  };
+  for (const k of Object.keys(meta)) if (meta[k] === undefined) delete meta[k];
+  const json = JSON.stringify(meta);
+  const b64 = btoa(String.fromCharCode(...new TextEncoder().encode(json)));
+  return 'data:application/json;base64,' + b64;
+}
+
+$('go').addEventListener('click', async () => {
+  err.textContent = '';
+  // Belt and braces: the button is already disabled in this case, but a launch must never
+  // be sent against a fee we could not read.
+  if (!feeLoaded) return (err.textContent = 'The creation fee is unknown — cannot create yet.');
+  const account = hexa.currentAccount();
+  if (!account) return (err.textContent = 'Connect a wallet first.');
+
+  const name = $('name').value.trim(), symbol = $('symbol').value.trim().toUpperCase();
+  if (!name || !symbol) return (err.textContent = 'Name and ticker are required.');
+  if (!pickedFile) return (err.textContent = 'Add an image or video first.');
+
+  const btn0 = $('go');
+  let imageUrl = null;
+  try {
+    btn0.textContent = 'Uploading artwork…';
+    imageUrl = await uploadArtwork();
+  } catch (e) {
+    btn0.textContent = 'Create coin';
+    return (err.textContent = explain(e));
+  }
+
+  // Fixed curve: every coin opens at a $2,000 market cap. docs/CURVE.md §4.
+  const params = {
+    name, symbol,
+    metadataURI: buildMetadataURI(imageUrl),
+    totalSupply: 1_000_000_000n * E18,
+    virtualUsdc: 2_146n * E18,
+    virtualTokens: 1_073_000_000n * E18,
+    realTokens: 793_100_000n * E18,
+  };
+  const salt = hexa.randomSalt();
+  const commitHash = hexa.hashLaunch(account, params, salt);
+  const F = hexa.addresses.factory;
+  const btn = $('go');
+  clearSteps();
+
+  try {
+    btn.disabled = true;
+    setStep(1, 'on'); btn.textContent = 'Confirm the commit in your wallet…';
+    // Cross-check against the contract before spending gas: a mismatch means the reveal could
+    // never find its commit, and the fee would be burned for nothing.
+    const onchain = await hexa.read(F, 'HexaFactory', 'hashLaunch', [account, params, salt]);
+    if (onchain.toLowerCase() !== commitHash.toLowerCase()) throw new Error('commit hash mismatch — refusing to send');
+
+    await hexa.write(F, 'HexaFactory', 'commit', [commitHash]);
+    setStep(1, 'done'); setStep(2, 'on');
+
+    const min = await hexa.read(F, 'HexaFactory', 'COMMIT_MIN_BLOCKS');
+    const start = await head();
+    for (;;) {
+      const left = Number(start + min - (await head()));
+      if (left <= 0) break;
+      btn.textContent = `Waiting ${left} block${left === 1 ? '' : 's'}…`;
+      await new Promise((r) => setTimeout(r, 1200));
+    }
+    setStep(2, 'done'); setStep(3, 'on');
+
+    const buyIn = $('devbuy').value ? hexa.parseEther($('devbuy').value) : 0n;
+    btn.textContent = 'Confirm the reveal in your wallet…';
+    // The contract takes the fee off the top and treats the remainder as the buy-in.
+    await hexa.write(F, 'HexaFactory', 'reveal', [params, salt], creationFee + buyIn);
+
+    const [curve, token] = await hexa.read(F, 'HexaFactory', 'launches', [commitHash]);
+    setStep(3, 'done');
+    location.href = `coin.html?token=${token}&curve=${curve}`;
+  } catch (e) {
+    err.textContent = explain(e);
+    btn.textContent = 'Create coin';
+    btn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Explore coins — Hexapus</title>
+<link rel="stylesheet" href="assets/app.css?v=20"/>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body">
+    <main>
+      <h2>Explore coins</h2>
+
+      <!-- Search lives in the page, not in the sticky top bar: it belongs to Explore, and the
+           top bar is shared by every page that has nothing to search. -->
+      <div class="searchbox" id="opensearch" style="max-width:460px;margin:14px 0 16px">
+        <span>⌕</span><span>Search for coins and addresses…</span><span class="kbd">⌘K</span>
+      </div>
+
+      <div class="tabs" role="tablist" id="tabs">
+        <button role="tab" aria-selected="true"  data-tab="trending">Trending</button>
+        <button role="tab" aria-selected="false" data-tab="movers">Movers</button>
+        <button role="tab" aria-selected="false" data-tab="new">New</button>
+        <button role="tab" aria-selected="false" data-tab="booster">Referrer</button>
+        <button role="tab" aria-selected="false" data-tab="migrated">Migrated</button>
+        <button role="tab" aria-selected="false" data-tab="monitoring">Monitoring</button>
+        <button role="tab" aria-selected="false" data-tab="watchlist">Watchlist</button>
+      </div>
+
+      <div class="subbar">
+        <div class="seg" id="frames" hidden>
+          <button aria-selected="false" data-f="5m">5M</button>
+          <button aria-selected="true"  data-f="1h">1H</button>
+          <button aria-selected="false" data-f="6h">6H</button>
+          <button aria-selected="false" data-f="24h">24H</button>
+          <button aria-selected="false" data-f="all">ALL</button>
+        </div>
+        <span class="dim" id="hint" style="font-size:12.5px"></span>
+      </div>
+
+      <div id="state" class="glass" hidden style="padding:26px"></div>
+      <div class="grid" id="grid"></div>
+
+      <div class="tablewrap" id="table" hidden>
+        <table>
+          <thead><tr>
+            <th>Token</th>
+            <th data-sort="mcap">MCap</th><th data-sort="price">Price</th>
+            <th data-sort="ath">ATH</th>
+            <th data-sort="age">Age</th><th data-sort="txns">Txns</th>
+            <th data-sort="vol">24h Vol</th>
+            <th data-sort="traders">Traders</th>
+            <th data-sort="c1">1h</th><th data-sort="c6">6h</th><th data-sort="c24">24h</th>
+            <th data-sort="liq">Liquidity</th>
+            <th style="width:40px"></th>
+          </tr></thead>
+          <tbody id="tbody"></tbody>
+        </table>
+      </div>
+      <div id="pager" hidden style="display:flex;gap:6px;align-items:center;justify-content:center;margin-top:16px"></div>
+    </main>
+</div></div>
+
+<div class="modal" id="modal">
+  <div class="sheet" role="dialog" aria-label="Search">
+    <input id="q" placeholder="Search by symbol, name or address…" autocomplete="off"/>
+    <div class="sect"><div class="sect-hd"><b>Results</b></div><div id="qresults"></div></div>
+  </div>
+</div>
+
+<script src="assets/config.js?v=14"></script>
+<script src="assets/web3.bundle.js?v=16"></script>
+<script src="assets/shell.js?v=17"></script>
+<script>
+hexaShell.mount({ active: 'explore' });
+
+// One indexer serves every tab now. The full-chain scan role is no longer required for
+// anything the site displays — see RENDER.monitoring.
+const HEXA_API = window.HEXA_CONFIG?.hexaApi || localStorage.hexaApi || 'http://127.0.0.1:8880';
+
+const grid = document.getElementById('grid'), table = document.getElementById('table');
+const tbody = document.getElementById('tbody'), frames = document.getElementById('frames');
+const hint = document.getElementById('hint'), stateBox = document.getElementById('state');
+const feedstat = document.getElementById('feedstat');
+
+/** How long to wait before asking again when the feed did not answer. */
+const RETRY_MS = 4000;
+let retryTimer = null;
+
+const HINTS = {
+  trending: 'Turnover, fresh wallets and price velocity — z-scored against the window.',
+  movers:   'Highest traded volume in the window. Deliberately just volume.',
+  new:      'Newest reveals first.',
+  booster:  'Buys by traders who arrived through a referral link. Single-tier attribution.',
+  // The tab key stays `booster` so existing /booster links and the API path keep working;
+  // only the label changed.
+  migrated: 'Graduated off the curve. Liquidity locked, no withdraw path.',
+  monitoring: 'Every coin launched through Hexapus, with full price history.',
+  watchlist: 'Coins you follow. Stored in this browser only.',
+};
+
+const short = (a) => a ? a.slice(0, 6) + '…' + a.slice(-4) : '—';
+// Always compact. Full precision overflowed the cards, and a market cap is read at a
+// glance rather than to the cent.
+// Always compact. Full precision overflowed the cards, and a market cap is read at a
+// glance rather than to the cent.
+const usd = (n) => !isFinite(n) ? '—'
+                 : n >= 1e9 ? '$' + (n / 1e9).toFixed(2) + 'B'
+                 : n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M'
+                 : n >= 1e3 ? '$' + (n / 1e3).toFixed(2) + 'K'
+                 : '$' + Number(n).toFixed(1);
+// null means the coin did not exist that far back — different from a flat 0% and shown as such.
+const pct = (v) => v === null || v === undefined
+  ? '<span class="dim">—</span>'
+  : `<span class="num ${v>0?'up':v<0?'down':'dim'}">${v>0?'+':''}${(v*100).toFixed(1)}%</span>`;
+
+const watch = {
+  list: () => JSON.parse(localStorage.watchlist || '[]'),
+  toggle(t) {
+    const l = watch.list(); const i = l.indexOf(t);
+    i < 0 ? l.push(t) : l.splice(i, 1);
+    localStorage.watchlist = JSON.stringify(l);
+  },
+};
+
+function show(kind, title, body) {
+  grid.innerHTML = ''; table.hidden = true; grid.hidden = true;
+  stateBox.hidden = false;
+  stateBox.innerHTML = `<b style="font-size:15px">${title}</b><div class="muted" style="margin-top:8px;line-height:1.65">${body}</div>`;
+}
+const clearState = () => { stateBox.hidden = true; grid.hidden = false; };
+
+/**
+ * Assigning innerHTML tears down and rebuilds every node even when the markup is identical,
+ * which is what made the cards visibly blink on the 20s refresh — and dropped any hover or
+ * focus that was on them. Comparing first turns an unchanged refresh into a no-op.
+ */
+const paint = (html) => { if (grid.innerHTML !== html) grid.innerHTML = html; };
+const paintRows = (html) => { if (tbody.innerHTML !== html) tbody.innerHTML = html; };
+
+async function get(base, path) {
+  const r = await fetch(base + path, { cache: 'no-store' });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+const SUBSCRIPT = '₀₁₂₃₄₅₆₇₈₉';
+/** $0.0₅2001 — four significant digits in the width "$0.000002" spends on zeros. */
+const price6 = (n) => {
+  if (!(n > 0) || !isFinite(n)) return '—';
+  if (n >= 1) return '$' + n.toFixed(2);
+  const zeros = -Math.floor(Math.log10(n)) - 1;
+  if (zeros >= 4) {
+    const digits = (n * 10 ** (zeros + 4)).toFixed(0).slice(0, 4);
+    return '$0.0' + String(zeros).split('').map((d) => SUBSCRIPT[+d]).join('') + digits;
+  }
+  return '$' + n.toFixed(zeros + 4);
+};
+
+const ageFrom = (block, head, bps) => {
+  if (!block || !head) return null;
+  const s = Math.max(0, (head - block) / (bps || 2));
+  return s < 3600 ? Math.round(s / 60) + 'm'
+       : s < 86400 ? Math.round(s / 3600) + 'h'
+       : s < 2592000 ? Math.round(s / 86400) + 'd'
+       : Math.round(s / 2592000) + 'mo';
+};
+
+/**
+ * Cards need numbers that /launches does not carry. /metrics has them, keyed by token, so the
+ * two are merged here rather than teaching every tab to fetch twice. Cached briefly because
+ * four tabs can ask for it inside one render.
+ */
+let metricsAt = 0, metricsBy = new Map(), metricsBps = 2;
+async function withMetrics(rows) {
+  if (Date.now() - metricsAt > 8000) {
+    try {
+      const d = await get(HEXA_API, '/metrics');
+      metricsBy = new Map(d.rows.map((r) => [r.token, r]));
+      metricsBps = d.blocksPerSecond || 2;
+      metricsAt = Date.now();
+    } catch { /* cards fall back to dashes */ }
+  }
+  if (!monHead) await syncHead();
+  return rows.map((r) => {
+    const m = metricsBy.get(r.token) ?? {};
+    return { ...r, ...m,
+      ageLabel: ageFrom(m.firstBlock ?? r.reveal_block, monHead, metricsBps) };
+  });
+}
+
+/** Last curve % drawn per token, so an advance can be told from a redraw. */
+const curveSeen = new Map();
+
+/**
+ * A card carries the four numbers someone actually scans for — market cap, price, volume, age —
+ * plus how far the coin is along its curve. The reveal block was in that slot before, which is
+ * true but tells a trader nothing.
+ */
+function coinCard(c, extra = '') {
+  const starred = watch.list().includes(c.token) ? '★' : '☆';
+  const pctDone = c.curvePct ?? null;
+  // A card is rebuilt from scratch on every refresh, so the spark cannot be added to a living
+  // element — it is baked into the markup and plays as the new node is inserted. Which means
+  // the previous reading has to be remembered here, per coin.
+  const advanced = pctDone !== null && curveSeen.has(c.token) && pctDone > curveSeen.get(c.token) + 1e-3;
+  if (pctDone !== null) curveSeen.set(c.token, pctDone);
+  const stat = (label, value) =>
+    `<div class="cs"><span>${label}</span><b>${value}</b></div>`;
+  return `<article class="coin" data-token="${c.token}" data-curve="${c.curve ?? ''}">
+    <div class="art">${hexaShell.art(c.token, c.image)}
+      <button class="star" data-star="${c.token}" title="Watchlist"
+        style="position:absolute;top:8px;right:8px;font-size:16px;color:#fff;opacity:.8">${starred}</button></div>
+    <div class="body">
+      <div class="nm"><b>${c.symbol ?? '???'}</b><span>${c.name ?? ''}</span></div>
+      <div class="cstats">
+        ${stat('MCap', c.mcap != null ? usd(c.mcap) : '—')}
+        ${stat('Price', price6(c.lastPrice ?? 0))}
+        ${stat('Vol 24h', c.vol24h != null ? usd(c.vol24h) : '—')}
+        ${stat('Age', c.ageLabel ?? '—')}
+      </div>
+      ${pctDone === null ? '' : `
+      <div class="cbar" title="${pctDone.toFixed(1)}% of the curve sold">
+        <i class="weld${c.phase === 'GRADUATED' ? ' grad' : ''}${advanced ? ' spark' : ''}"
+           style="width:${Math.max(1.5, Math.min(100, pctDone)).toFixed(1)}%"></i>
+      </div>
+      <div class="cbar-l"><span>Bonding curve</span><b>${pctDone.toFixed(1)}%</b></div>`}
+      ${extra}
+    </div></article>`;
+}
+
+const RENDER = {
+  async trending(w) {
+    const d = await get(HEXA_API, `/trending?window=${w}`);
+    feedstat.textContent = `block rate ${d.blocksPerSecond.toFixed(2)}/s`;
+    if (!d.rows.length) {
+      const why = (d.excluded ?? []).map((x) =>
+        `<li><b>${x.symbol}</b> — ${x.reason.replace('-', ' ')} (liquidity ${usd(x.liquidityUsd)}, ${x.trades} trades)</li>`).join('');
+      return show('empty', 'Nothing ranked in this window',
+        `Trending needs at least <b>${usd(d.thresholds.minLiquidityUsd)}</b> of liquidity and
+         <b>${d.thresholds.minTrades}</b> trades before a coin counts — the filters that stop a
+         $50 pool printing +9000% on one buy.
+         ${why ? `<ul style="margin:10px 0 0 18px">${why}</ul>` : ''}
+         <div style="margin-top:12px">On a young chain these thresholds exclude almost everything.</div>`);
+    }
+    clearState();
+    paint((await withMetrics(d.rows)).map((r) => coinCard(r, `
+      <div class="meta"><span class="tag hx">${r.phase}</span>
+        <span>vol ${usd(r.volumeUsd)} · ${r.newWallets} new</span></div>
+      <div class="meta"><span class="dim">turnover ${r.turnover.toFixed(2)}×</span>
+        ${pct(r.priceVelocity)}
+        ${r.washPenalty < 0.9 ? `<span class="tag" style="color:#ff6b81;border-color:rgba(255,107,129,.4)">CONCENTRATED</span>` : ''}</div>`)).join(''));
+  },
+
+  async movers(w) {
+    const d = await get(HEXA_API, `/movers?window=${w}`);
+    if (!d.rows.length) return show('empty', 'No volume in this window',
+      `Nothing has traded in the last <b>${w}</b>. Try <b>ALL</b>.`);
+    clearState();
+    paint((await withMetrics(d.rows)).map((r) => coinCard(r, `
+      <div class="meta"><span class="tag hx">${r.phase}</span>
+        <span>${r.trades} trades · liq ${usd(r.liquidityUsd)}</span></div>`)).join(''));
+  },
+
+  async new() {
+    const rows = await withMetrics(await get(HEXA_API, '/launches?limit=60'));
+    if (!rows.length) return show('empty', 'No coins launched yet',
+      `Nothing has launched here yet. <a href="create.html">Create the first coin</a>.`);
+    clearState();
+    paint(rows.map((r) => coinCard(r, `
+      <div class="meta"><span class="tag hx">${r.phase}</span>
+        <span>by ${short(r.creator)}</span></div>`)).join(''));
+  },
+
+  async booster() {
+    const rows = await withMetrics(await get(HEXA_API, '/booster?limit=60'));
+    if (!rows.length) return show('empty', 'No referred buys yet',
+      `These are buys from people who arrived through someone's referral link.`);
+    clearState();
+    paint(rows.map((r) => coinCard(r, `
+      <div class="meta"><span class="tag hx">REFERRED</span>
+        <span>${short(r.referrer)} referred ${short(r.buyer)}</span></div>
+      <div class="meta"><span class="dim">bought ${usd(r.usdc)}</span></div>`)).join(''));
+  },
+
+  async migrated() {
+    const rows = await withMetrics((await get(HEXA_API, '/launches?limit=200')).filter((r) => r.phase === 'GRADUATED'));
+    if (!rows.length) return show('empty', 'Nothing has graduated yet',
+      `A coin graduates when its curve sells out, then its liquidity moves into a Uniswap v3
+       pool and locks.`);
+    clearState();
+    paint(rows.map((r) => coinCard(r, `
+      <div class="meta"><span class="tag v3">MIGRATED</span><span>LP locked · no withdraw path</span></div>
+      <div class="meta"><span class="dim">by ${short(r.creator)}</span></div>`)).join(''));
+  },
+
+  /**
+   * Coins launched through Hexapus, with every column filled.
+   *
+   * This used to join the full-chain scan with our own metrics, which meant most rows were
+   * a symbol and a row of dashes — we index trades for our coins, not for every ERC-20 on
+   * Arc, so there was no honest price history to put in them. Sourcing from /metrics alone
+   * drops the second indexer role and every blank cell with it.
+   */
+  async monitoring() {
+    const d = await get(HEXA_API, '/metrics');
+    if (!d.rows?.length) return show('empty', 'No coins launched yet',
+      `Monitoring lists coins launched through Hexapus. Create one from
+       <a href="create.html">Create one</a>.`);
+
+    const bps = d.blocksPerSecond || 2;
+    const age = (firstBlock) => {
+      const secs = Math.max(0, (monHead - firstBlock) / bps);
+      if (secs < 3600) return Math.round(secs / 60) + 'm';
+      if (secs < 86400) return Math.round(secs / 3600) + 'h';
+      if (secs < 2592000) return Math.round(secs / 86400) + 'd';
+      return Math.round(secs / 2592000) + 'mo';
+    };
+
+    // Paged client-side: this list is our own launches, not thousands of tokens, so a second
+    // round trip per page would cost more than sending it all once.
+    const pages = Math.max(1, Math.ceil(d.rows.length / 100));
+    if (monPage > pages) monPage = 1;
+    const start = (monPage - 1) * 100;
+    const rows = d.rows.slice(start, start + 100);
+
+    stateBox.hidden = true; grid.hidden = true; table.hidden = false;
+    paintRows(rows.map((m, i) => {
+      const starred = watch.list().includes(m.token) ? '★' : '☆';
+      const link = m.curve ? `coin.html?token=${m.token}&curve=${m.curve}` : null;
+      return `<tr${link ? ` data-open="${link}" style="cursor:pointer"` : ''}>
+        <td><div class="tk"><span class="rk">${start + i + 1}</span>
+          <span class="av av-lg">${hexaShell.art(m.token, m.image, { eager: true })}</span>
+          <div><b>${m.name ?? '—'}</b><br>
+          <span class="pair">$${m.symbol ?? '???'}</span>
+          <span class="tag ${m.phase === 'GRADUATED' ? 'v3' : 'hx'}" style="font-size:9px">${m.phase}</span></div></div></td>
+        <td class="num">${usd(m.mcap)}</td>
+        <td class="num">${price6(m.lastPrice)}</td>
+        <td class="num">${usd(m.ath)}</td>
+        <td class="num">${age(m.firstBlock)}</td>
+        <td class="num">${m.txns.toLocaleString()}</td>
+        <td class="num">${usd(m.vol24h)}</td>
+        <td class="num">${m.traders24h.toLocaleString()}</td>
+        <td>${pct(m.change1h)}</td>
+        <td>${pct(m.change6h)}</td>
+        <td>${pct(m.change24h)}</td>
+        <td class="num">${m.liquidityUsd == null ? '—' : usd(m.liquidityUsd)}</td>
+        <td><button data-star="${m.token}" style="font-size:15px;color:var(--muted)">${starred}</button></td>
+      </tr>`;
+    }).join(''));
+
+    renderPager(monPage, pages, d.rows.length);
+  },
+
+  async watchlist() {
+    const want = watch.list();
+    if (!want.length) return show('empty', 'Your watchlist is empty',
+      'Tap the star on any coin to follow it. Stored in this browser only, never sent anywhere.');
+    const rows = await withMetrics((await get(HEXA_API, '/launches?limit=200')).filter((r) => want.includes(r.token)));
+    if (!rows.length) return show('empty', 'Watched coins not found',
+      'The coins you followed are not in this indexer\'s database.');
+    clearState();
+    paint(rows.map((r) => coinCard(r, `
+      <div class="meta"><span class="tag hx">${r.phase}</span><span>by ${short(r.creator)}</span></div>`)).join(''));
+  },
+};
+
+let currentTab = 'trending';
+let monPage = 1, monHead = 0;
+const pager = document.getElementById('pager');
+const currentWindow = () => document.querySelector('#frames button[aria-selected=true]')?.dataset.f ?? '1h';
+
+/** Age is measured back from the current head, which /health reports. */
+async function syncHead() {
+  try { monHead = Number((await get(HEXA_API, '/health')).head ?? 0); } catch { monHead = 0; }
+}
+
+function renderPager(page, pages, total) {
+  if (pages <= 1) { pager.hidden = true; return; }
+  pager.hidden = false;
+  const btn = (p, label = p, on = false, disabled = false) =>
+    `<button class="btn" data-page="${p}" ${disabled ? 'disabled' : ''}
+      style="padding:6px 11px;font-size:13px;${on ? 'background:rgba(255,255,255,.13)' : ''}
+             ${disabled ? 'opacity:.35;cursor:default' : ''}">${label}</button>`;
+
+  // A window around the current page rather than every page: thousands of tokens is dozens
+  // of pages, and a row of 40 numbers is not navigation.
+  const nums = [];
+  for (let p = Math.max(1, page - 2); p <= Math.min(pages, page + 2); p++) nums.push(btn(p, p, p === page));
+  pager.innerHTML =
+    btn(page - 1, '‹', false, page === 1) +
+    (page > 3 ? btn(1) + '<span class="dim" style="padding:0 4px">…</span>' : '') +
+    nums.join('') +
+    (page < pages - 2 ? '<span class="dim" style="padding:0 4px">…</span>' + btn(pages) : '') +
+    btn(page + 1, '›', false, page === pages) +
+    `<span class="dim" style="margin-left:12px;font-size:12.5px">${total.toLocaleString()} tokens</span>`;
+}
+
+tbody.addEventListener('click', (e) => {
+  const star = e.target.closest('[data-star]');
+  if (star) { e.stopPropagation(); watch.toggle(star.dataset.star); render('monitoring'); return; }
+  const row = e.target.closest('tr[data-open]');
+  if (row) location.href = row.dataset.open;
+});
+
+pager.addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-page]');
+  if (!b || b.disabled) return;
+  monPage = Number(b.dataset.page);
+  render('monitoring');
+});
+
+async function render(tab, { silent = false } = {}) {
+  if (tab !== currentTab) monPage = 1; // a new tab should not land on page 7 of the old one
+  currentTab = tab;
+  hint.textContent = HINTS[tab] ?? '';
+  frames.hidden = !['trending', 'movers'].includes(tab);
+  // The 20s refresh runs silent: tearing the list down to a "Loading…" box and building it
+  // back is what made the page look like it was reloading itself every few seconds.
+  if (!silent) {
+    table.hidden = true;
+    pager.hidden = true;
+    show('loading', 'Loading…', '');
+  }
+  try {
+    if (tab === 'monitoring') await syncHead();
+    await RENDER[tab](currentWindow());
+    clearTimeout(retryTimer);
+  } catch (e) {
+    // A failed background refresh keeps the last good screen rather than replacing it.
+    if (silent) return;
+    // The feed being down is our problem, not the reader's: they get "Loading…" and the page
+    // keeps trying until it answers. Naming the host, the error, or the command that starts it
+    // told them nothing they could act on.
+    show('loading', 'Loading…', '');
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(() => render(tab), RETRY_MS);
+  }
+}
+
+document.getElementById('tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-tab]'); if (!b) return;
+  for (const t of document.querySelectorAll('#tabs button')) t.setAttribute('aria-selected', String(t === b));
+  render(b.dataset.tab);
+});
+
+frames.addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  for (const t of frames.querySelectorAll('button')) t.setAttribute('aria-selected', String(t === b));
+  render(currentTab);
+});
+
+grid.addEventListener('click', (e) => {
+  const star = e.target.closest('[data-star]');
+  if (star) { e.stopPropagation(); watch.toggle(star.dataset.star); render(currentTab); return; }
+  const card = e.target.closest('.coin');
+  if (card?.dataset.token && card.dataset.curve) {
+    location.href = `coin.html?token=${card.dataset.token}&curve=${card.dataset.curve}`;
+  }
+});
+
+// search
+const modal = document.getElementById('modal'), q = document.getElementById('q');
+const qresults = document.getElementById('qresults');
+const openSearch = () => { modal.classList.add('open'); q.focus(); q.dispatchEvent(new Event('input')); };
+document.getElementById('opensearch').addEventListener('click', openSearch);
+modal.addEventListener('click', (e) => { if (e.target === modal) modal.classList.remove('open'); });
+addEventListener('keydown', (e) => {
+  if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); openSearch(); }
+  if (e.key === 'Escape') modal.classList.remove('open');
+});
+
+q.addEventListener('input', async () => {
+  const term = q.value.trim().toLowerCase();
+  try {
+    const rows = await get(HEXA_API, '/launches?limit=200');
+    const hits = rows.filter((r) => !term
+      || (r.symbol ?? '').toLowerCase().includes(term)
+      || (r.name ?? '').toLowerCase().includes(term)
+      || (r.token ?? '').toLowerCase().includes(term)).slice(0, 8);
+    qresults.innerHTML = hits.length
+      // An anchor, not a div: these rows carried no href and no handler, so clicking a
+      // search result did nothing at all.
+      ? hits.map((r) => `<a class="listrow" href="coin.html?token=${r.token}&curve=${r.curve}">
+          <span class="av">${hexaShell.art(r.token, r.image, { eager: true })}</span>
+          <div class="grow"><b>${r.symbol}</b> <span class="dim">${r.name ?? ''}</span>
+          <div class="addr">${r.token}</div></div>
+          <span class="tag ${r.phase === 'GRADUATED' ? 'v3' : 'hx'}">${r.phase}</span></a>`).join('')
+      : `<div class="dim" style="padding:8px 6px">No coin matches “${q.value}”.</div>`;
+  } catch {
+    qresults.innerHTML = `<div class="dim" style="padding:8px 6px">Loading…</div>`;
+  }
+});
+
+// coin.html links here with #search rather than carrying its own copy of the search modal.
+if (location.hash === '#search') openSearch();
+
+const start = location.hash.slice(1);
+const deepTab = document.querySelector(`#tabs button[data-tab="${start}"]`);
+if (deepTab) {
+  document.querySelector('#tabs button[aria-selected=true]').setAttribute('aria-selected', 'false');
+  deepTab.setAttribute('aria-selected', 'true');
+}
+render(deepTab ? start : 'trending');
+setInterval(() => render(currentTab, { silent: true }), 20_000);
+</script>
+</body>
+</html>
