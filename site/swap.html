@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Swap — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=25"/>
+<link rel="stylesheet" href="assets/app.css?v=26"/>
 <style>
   /* One card, so the column is centred in the pane rather than hugging the left edge the way
      the data pages do. */
@@ -49,6 +49,9 @@
   .tokbtn .sym{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tokbtn .chev{font-style:normal;font-size:9px;opacity:.6;margin-left:1px}
   .tokbtn.empty{color:var(--ink);background:linear-gradient(180deg,#c94cf0,#8b3ff0);border-color:transparent}
+  /* `display:flex` above beats the browser's own [hidden]{display:none}, so both the USDC pill
+     and the token button rendered side by side in each panel. */
+  .tokbtn[hidden]{display:none}
 
   .flip2{display:flex;justify-content:center;margin:-11px 0;position:relative;z-index:2}
   .flip2 button{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;
@@ -239,10 +242,9 @@
       </div>
       <div class="row">
         <input class="bigamt" id="pay" type="number" min="0" step="any" placeholder="0.0" inputmode="decimal"/>
-        <span class="tokbtn" id="payUsdc" style="cursor:default">
+        <button class="tokbtn" id="payUsdc" title="Pick a coin to sell instead">
           <span class="av"><img src="assets/usdc.png" alt="" width="24" height="24"/></span>
-          <span class="sym">USDC</span>
-        </span>
+          <span class="sym">USDC</span><i class="chev">▼</i></button>
         <button class="tokbtn empty" id="payPick" hidden><span class="sym">Select token</span><i class="chev">▼</i></button>
       </div>
       <div class="fiat" id="payFiat"></div>
@@ -316,8 +318,7 @@
       <div class="tr"><span>Minimum received</span><b id="tMin">—</b></div>
       <div class="tr"><span>Slippage tolerance</span>
         <b><span class="slips" id="slips"></span><input class="slipin" id="slipCustom" type="number" min="0.1" max="50" step="0.1" placeholder="custom"/></b></div>
-      <div class="tr"><span>Swap fee · buy and sell <i class="q" title="Charged by the curve on every trade. Creator, protocol and referrer split it.">?</i></span><b id="tFee">—</b></div>
-      <div class="tr" id="taxRow" hidden><span>Sell tax <i class="q" title="Decays block by block after launch. It is already taken out of the figure above — this is not charged on top.">?</i></span><b id="tTax">—</b></div>
+      <div class="tr"><span>Swap fee</span><b id="tFee">—</b></div>
       <div class="tr" id="routeRow"><span>Route</span><b id="tRoute">—</b></div>
     </div>
 
@@ -638,6 +639,13 @@ const closePicker = () => $('tokwrap').classList.remove('on');
 
 $('pick').addEventListener('click', openPicker);
 $('payPick').addEventListener('click', openPicker);
+// Paying in USDC and then clicking it can only mean one thing: they want to pay in a coin
+// instead. Flip first, then open the picker, so what they choose lands on the paying side and
+// USDC moves down to "You receive" on its own.
+$('payUsdc').addEventListener('click', () => {
+  if (!selling()) { dir = 'sell'; $('pay').value = ''; paintDirection(); }
+  openPicker();
+});
 $('tokClose').addEventListener('click', closePicker);
 $('tokwrap').addEventListener('click', (e) => { if (e.target === $('tokwrap')) closePicker(); });
 $('tokQ').addEventListener('input', renderPicker);
@@ -652,6 +660,7 @@ $('tokList').addEventListener('click', async (e) => {
   closePicker();
   paintToken();
   if (selling()) await loadTokenBalance();
+  paintBalance();
   // Re-quote here too, not only on amount input: picking the coin after typing the amount is the
   // normal order, and without this the receive field stayed empty until the amount was retyped.
   quote();
@@ -772,7 +781,6 @@ async function quote() {
     $('tMin').textContent = `${qty(Number(hexa.formatEther(min)))} ${token.symbol}`;
     $('tFee').textContent = feeBps === null ? '—'
       : `${(Number(feeBps) / 100).toFixed(2)}%  ·  ${money(usdc * Number(feeBps) / 10_000)}`;
-    $('taxRow').hidden = true;
     paintRoute(usdc);
   } catch {
     $('recv').value = ''; $('recvFiat').textContent = 'No quote available.';
@@ -795,10 +803,11 @@ async function quoteSell() {
   }
   try {
     const inWei = hexa.parseEther(String(amt));
-    const [out, feeBps, taxBps] = await Promise.all([
+    // The sell tax is no longer itemised — it decays to nothing within a minute of launch, and
+    // `quoteSell` already deducts whatever is left, so the figure shown is what lands.
+    const [out, feeBps] = await Promise.all([
       hexa.read(token.curve, 'HexaCurve', 'quoteSell', [inWei]),
       hexa.read(token.curve, 'HexaCurve', 'FEE_BPS', []).catch(() => null),
-      hexa.read(token.curve, 'HexaCurve', 'sellTaxBps', []).catch(() => null),
     ]);
     const min = (out * (10_000n - BigInt(Math.round(slipPct * 100)))) / 10_000n;
     const outN = Number(hexa.formatEther(out));
@@ -812,8 +821,6 @@ async function quoteSell() {
     $('tRate').textContent = `1 USDC ≈ ${qty(amt / outN)} ${token.symbol}`;
     $('tMin').textContent = money(Number(hexa.formatEther(min)));
     $('tFee').textContent = feeBps === null ? '—' : `${(Number(feeBps) / 100).toFixed(2)}%`;
-    $('taxRow').hidden = taxBps === null;
-    $('tTax').textContent = taxBps === null ? '—' : `${(Number(taxBps) / 100).toFixed(1)}%`;
     $('tRoute').textContent = 'Curve → USDC on Arc';
   } catch {
     $('recv').value = ''; $('recvFiat').textContent = 'No quote available.';
