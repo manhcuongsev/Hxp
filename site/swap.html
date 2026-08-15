@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Swap — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=21"/>
+<link rel="stylesheet" href="assets/app.css?v=22"/>
 <style>
   /* One card, so the column is centred in the pane rather than hugging the left edge the way
      the data pages do. */
@@ -63,7 +63,11 @@
     background:linear-gradient(100deg,#f45cf0,#a855f7 55%,#7c3aed);
     box-shadow:0 10px 26px -10px rgba(232,121,249,.75), inset 0 1px 0 rgba(255,255,255,.28);
     transition:transform .13s, box-shadow .13s, filter .13s}
-  .cta:not(:disabled):hover{filter:brightness(1.1);transform:translateY(-1px);
+  /* The gradient is restated here on purpose: the shared .btn:hover paints a translucent white
+     with no colour underneath, which over a dark page reads as grey — it was turning the
+     brightest button on the site into a dead one exactly when the cursor was on it. */
+  .cta:not(:disabled):hover{filter:brightness(1.12);transform:translateY(-1px);
+    background:linear-gradient(100deg,#f45cf0,#a855f7 55%,#7c3aed);
     box-shadow:0 14px 32px -10px rgba(232,121,249,.9), inset 0 1px 0 rgba(255,255,255,.34)}
   .cta:not(:disabled):active{transform:translateY(0)}
   .cta:not(:disabled)::after{content:'';position:absolute;inset:0;pointer-events:none;
@@ -747,6 +751,10 @@ $('slipCustom').addEventListener('input', () => {
 });
 
 function gate() {
+  // A swap in flight narrates itself. Without this the wallet hopping to the source chain to
+  // sign the burn made the button read "Switch to Arc Testnet" mid-pull, which looks like the
+  // trade stopped and asked for something else.
+  if (busy) return;
   const btn = $('go'), usdc = Number($('pay').value);
   const account = hexa.currentAccount();
   let label = 'Swap', ok = true;
@@ -784,6 +792,8 @@ function paintSteps(state) {
 
 /** Kept in step with the wallet, so the button can say what is actually wrong. */
 let wrongChain = false;
+/** True from the first signature to the last, while the button reports the step it is on. */
+let busy = false;
 async function checkChain() {
   if (!hexa.currentAccount()) { wrongChain = false; return; }
   const id = await hexa.walletChainId();
@@ -808,7 +818,7 @@ $('go').addEventListener('click', async () => {
     return;
   }
   const usdc = Number($('pay').value), account = hexa.currentAccount();
-  btn.disabled = true;
+  btn.disabled = true; busy = true;
   $('err').textContent = ''; $('done').hidden = true;
   const state = {};
 
@@ -821,12 +831,14 @@ $('go').addEventListener('click', async () => {
       const source = ub.byChain.find((r) => r.chain !== 'Arc_Testnet' && Number(r.amount) >= need);
       if (!source) throw new Error(`No single chain holds the ${need.toFixed(2)} USDC still needed. Split the trade or top up.`);
       state.pull = 'run'; paintSteps(state);
+      btn.textContent = `Pulling USDC from ${hexaSwap.byChain(source.chain)?.name ?? 'chain'}…`;
       await hexaSwap.spendToArc({ from: source.chain, amount: need.toFixed(6), recipient: account });
       state.pull = 'ok';
     } else {
       state.pull = 'ok';
     }
     state.buy = 'run'; paintSteps(state);
+    btn.textContent = `Buying ${token.symbol}…`;
 
     // `buy` is payable and USDC is Arc's native token, so the amount rides as value — it is not
     // an argument. Slippage floor rather than 0: accepting any fill on a public mempool with
@@ -842,6 +854,7 @@ $('go').addEventListener('click', async () => {
        '0x0000000000000000000000000000000000000000'], inWei);
     state.buy = 'ok'; paintSteps(state);
 
+    btn.textContent = 'Done';
     $('done').hidden = false;
     $('done').innerHTML = `Bought <b>${token.symbol}</b>. `
       + `<a href="coin.html?token=${token.address}&curve=${token.curve}">Open the coin ↗</a>`;
@@ -851,7 +864,10 @@ $('go').addEventListener('click', async () => {
     paintSteps(state);
     $('err').textContent = e.shortMessage ?? e.message;
   }
-  gate();
+  busy = false;
+  // A moment on "Done" before the button goes back to offering the next trade.
+  await new Promise((r) => setTimeout(r, 1200));
+  await checkChain();
 });
 
 loadListed();
