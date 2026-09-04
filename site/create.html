@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Create new coin — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=31"/>
+<link rel="stylesheet" href="assets/app.css?v=32"/>
 <style>
   .layout{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start;max-width:1160px}
   @media(max-width:980px){.layout{grid-template-columns:1fr}}
@@ -842,8 +842,8 @@ function showCost() {
  * Only the floor is checked. `minBuyIn` is a flat 0.5 USDC and the reveal reverts below it, so
  * it is worth catching before gas is spent on a commit that cannot be completed.
  *
- * There is deliberately no ceiling: the creator cap was lifted, and the 0.5%-per-wallet guard
- * never applied to the creator in the first place.
+ * There is deliberately no ceiling. Both caps that used to exist are gone: the creator cap,
+ * and the per-wallet guard cap that never applied to the creator anyway.
  */
 function checkBuyIn() {
   const raw = $('devbuy').value.trim();
