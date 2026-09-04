@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Coin — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=27"/>
+<link rel="stylesheet" href="assets/app.css?v=29"/>
 <style>
   body main{padding:16px 18px 40px;max-width:1680px}
 
@@ -91,6 +91,35 @@
   .ghost[aria-pressed=true]{color:var(--ink)}
   #chart{width:100%;height:352px}
   .chart-empty{padding:70px 20px;text-align:center;color:var(--dim);font-size:14.5px;line-height:1.7}
+
+  /* ── story ──────────────────────────────────────────── */
+  .story{padding:13px 15px;font-size:13.5px;color:var(--muted);line-height:1.7}
+  .story b{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;
+    color:var(--dim);margin-bottom:6px;font-weight:600}
+  /* pre-wrap belongs on the text node alone, never on the card: the creator's paragraph breaks
+     are worth keeping, but on the container it also renders this file's own indentation. */
+  .story #story{display:block;white-space:pre-wrap}
+
+  /* ── asset packs ────────────────────────────────────── */
+  .packs{display:grid;grid-template-columns:repeat(auto-fill,minmax(232px,1fr));gap:12px;padding:13px}
+  .pk{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:rgba(255,255,255,.02)}
+  /* No fixed aspect: a generated sheet is 3:1 for three files and 1:1 for one, so cropping to a
+     single ratio cuts the assets in half. Height is capped instead, for a tall creator upload. */
+  .pk .shot{display:block;width:100%;height:auto;max-height:190px;object-fit:contain;background:#0c0e13}
+  .pk .body{padding:11px 12px}
+  .pk .t b{display:block;font-size:13.5px;font-weight:620;margin-bottom:5px}
+  .pk .meta{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+  .pk .meta .n{font:400 11.5px var(--num);color:var(--dim);margin-left:auto}
+  .pk .d{font-size:12.5px;color:var(--muted);line-height:1.55;margin-bottom:10px}
+  .pk .get{width:100%;padding:8px;border-radius:9px;font-size:13px;font-weight:600;
+    color:var(--ink);background:rgba(255,255,255,.07);border:1px solid var(--line)}
+  .pk .get:hover:not(:disabled){background:rgba(232,121,249,.16);border-color:rgba(232,121,249,.45)}
+  .pk .get:disabled{color:var(--dim);cursor:default}
+  .pk .why{font-size:11.5px;color:var(--dim);margin-top:6px;line-height:1.5}
+  .gatepill{font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;
+    padding:1px 5px;border-radius:5px;background:rgba(255,255,255,.07);
+    color:var(--dim);border:1px solid var(--line)}
+  .gatepill.open{background:rgba(95,227,161,.14);color:var(--up);border-color:rgba(95,227,161,.3)}
 
   /* ── stats ──────────────────────────────────────────── */
   .stat{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;margin-bottom:4px}
@@ -289,6 +318,19 @@
           <div class="chart-empty" id="chartempty" hidden></div>
         </div>
 
+        <!-- Between the chart and the tables: the buyer has seen the price, and this is where
+             they find out what they would be buying. Above the fold, and it displaces nothing
+             in the trade panel. -->
+        <div class="card story" id="storycard" style="margin-top:14px" hidden>
+          <b>Story</b><span id="story"></span>
+        </div>
+
+        <div class="card" id="packcard" style="margin-top:14px" hidden>
+          <div class="card-hd">Asset packs <span class="pill" id="npacks"></span></div>
+          <div class="packs" id="packs"></div>
+          <div class="empty2" id="packsnote" hidden></div>
+        </div>
+
         <div class="duo2">
           <div class="card">
             <div class="card-hd">Holders <span class="pill" id="nholders"></span></div>
@@ -442,6 +484,7 @@ if (!TOKEN || !CURVE) {
   $('loading').innerHTML = 'Open a coin from <a href="explore.html">Explore</a>.';
 } else {
   refresh();
+  loadPacks();
   setInterval(refresh, 15000);
 }
 
@@ -531,6 +574,7 @@ async function loadFeed({ fit = false } = {}) {
   drawChart({ fit: fit || !fitted });
   if (feed.candles?.length) fitted = true;
   renderArt();
+  renderStory();
   renderSocials();
   renderStats();
   renderHolders();
@@ -573,6 +617,147 @@ function renderArt() {
   if (artFor === src) return;
   artFor = src;
   $('art').innerHTML = hexaShell.art(TOKEN, src, { eager: true });
+}
+
+/**
+ * The story the creator wrote at launch. It travels in the on-chain metadata URI, so it is
+ * immutable and it is the same text for everyone — but it is also creator-supplied, so it goes
+ * in with textContent for the same reason the social links do.
+ *
+ * Hidden entirely when there is none. An empty card labelled "Story" reads as a coin whose
+ * story failed to load, rather than one that was launched without a story.
+ */
+function renderStory() {
+  const text = (feed?.meta?.description ?? '').trim();
+  $('story').textContent = text;
+  $('storycard').hidden = !text;
+}
+
+/* ── asset packs ────────────────────────────────────────────────────────────
+ * Fetched once rather than on the 15s refresh: the packs are committed on-chain at launch, so
+ * unlike the price there is nothing here that changes while the page is open.
+ */
+const GATE_LABEL = { public: 'Open', holder: 'Holders', graduated: 'At graduation' };
+
+async function loadPacks() {
+  let feedPacks;
+  try {
+    feedPacks = await (await fetch(`${HEXA_API}/packs/${TOKEN}`, { cache: 'no-store' })).json();
+  } catch { return; }
+  if (!feedPacks?.packs?.length && !feedPacks?.missing && !feedPacks?.removed) return;
+
+  $('packcard').hidden = false;
+  $('npacks').textContent = feedPacks.packs.length || '';
+  const host = $('packs');
+  host.textContent = '';
+
+  // Both of these say "this coin committed to packs and you are not getting them", which is a
+  // different thing from a coin that never had any — and worth saying out loud either way.
+  if (feedPacks.removed) return note(`These packs were removed: ${feedPacks.removed}`);
+  if (feedPacks.missing) return note('This coin was launched with packs, but this node does not have the files.');
+  $('packsnote').hidden = true;
+
+  for (const p of feedPacks.packs) host.appendChild(packCard(p));
+
+  function note(text) {
+    $('packsnote').hidden = false;
+    $('packsnote').textContent = text;
+  }
+}
+
+function packCard(p) {
+  const el = document.createElement('div');
+  el.className = 'pk';
+
+  const img = document.createElement('img');
+  img.className = 'shot';
+  img.loading = 'lazy';
+  img.alt = '';
+  img.src = new URL(p.previewUrl, HEXA_API).href;
+
+  const body = document.createElement('div');
+  body.className = 'body';
+
+  // Name on its own line, gate and count beneath: at two cards per column all three on one row
+  // wrapped mid-word.
+  const t = document.createElement('div');
+  t.className = 't';
+  const name = document.createElement('b');
+  name.textContent = p.name;                       // creator-supplied, so never innerHTML
+  t.append(name);
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const pill = document.createElement('span');
+  pill.className = 'gatepill' + (p.gate === 'public' ? ' open' : '');
+  pill.textContent = GATE_LABEL[p.gate] ?? p.gate;
+  const count = document.createElement('span');
+  count.className = 'n';
+  count.textContent = `${p.assets} file${p.assets === 1 ? '' : 's'}`;
+  meta.append(pill, count);
+
+  const d = document.createElement('div');
+  d.className = 'd';
+  d.textContent = p.description;
+
+  const btn = document.createElement('button');
+  btn.className = 'get';
+  btn.textContent = p.gate === 'public' ? 'Download' : 'Unlock and download';
+  const why = document.createElement('div');
+  why.className = 'why';
+  if (p.gate === 'holder') why.textContent = 'Hold any amount of this coin.';
+  if (p.gate === 'graduated') why.textContent = 'Opens to everyone once the coin graduates.';
+
+  btn.addEventListener('click', () => download(p, btn, why));
+  body.append(t, meta, d, btn, why);
+  el.append(img, body);
+  return el;
+}
+
+/**
+ * Prove the address, then take the zip.
+ *
+ * The signature is over the token and the pack index, so one signed for a public pack cannot be
+ * replayed against a gated one, and the server rejects it a few minutes later regardless. A
+ * public pack skips signing entirely — asking for a wallet to hand over something everyone may
+ * have is friction that buys nothing.
+ */
+async function download(p, btn, why) {
+  const label = btn.textContent;
+  btn.disabled = true;
+  why.textContent = '';
+  try {
+    const body = { index: p.index };
+    if (p.gate !== 'public') {
+      const account = hexa.currentAccount();
+      if (!account) throw new Error('Connect a wallet first.');
+      btn.textContent = 'Sign in your wallet…';
+      const ts = Date.now();
+      body.address = account;
+      body.ts = ts;
+      body.signature = await hexa.signMessage(
+        `Hexapus pack download\ntoken: ${TOKEN.toLowerCase()}\npack: ${p.index}\nat: ${ts}`);
+    }
+    btn.textContent = 'Preparing…';
+    const r = await fetch(`${HEXA_API}/packs/${TOKEN}/download`, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    });
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error ?? `Failed (${r.status})`);
+
+    // Fetched rather than linked, because the request is a POST carrying a signature. The blob
+    // is revoked straight away: the download has already started from the object URL.
+    const url = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(feed?.meta?.symbol ?? 'pack')}-${p.name.replace(/[^\w-]+/g, '-')}.zip`;
+    a.click();
+    URL.revokeObjectURL(url);
+    btn.textContent = 'Downloaded';
+  } catch (e) {
+    why.textContent = e.shortMessage ?? e.message;
+    btn.textContent = label;
+  }
+  btn.disabled = false;
 }
 
 // ── links the creator supplied ─────────────────────────────────────────────

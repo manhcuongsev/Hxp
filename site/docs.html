@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Docs — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=27"/>
+<link rel="stylesheet" href="assets/app.css?v=29"/>
 <style>
   .doc{display:grid;grid-template-columns:1fr 190px;gap:36px;align-items:start;max-width:1000px}
   @media(max-width:900px){.doc{grid-template-columns:1fr}.toc{display:none}}
@@ -97,8 +97,9 @@ reveal   →  deploys the token and curve, opens trading,
 
     <h3>After the launch: a decaying sell tax</h3>
     <p>
-      Selling in the opening window costs almost everything, decaying linearly to 1% over the
-      first minutes. Buying early is <b>never blocked</b> — blocking early buyers just moves
+      Selling in the opening window costs almost everything — 90% at the reveal, decaying
+      linearly to <b>zero</b> about a minute later. After that the only cost of selling is the
+      same 1% swap fee everyone pays. Buying early is <b>never blocked</b> — blocking early buyers just moves
       the game to who gets allowlisted. Instead the opening is a terrible time to flip and a
       fine time to hold.
     </p>
@@ -125,20 +126,20 @@ reveal   →  deploys the token and curve, opens trading,
     <p>The trading fee is <b>1%</b> of the USDC leg, on both buys and sells.</p>
     <table>
       <tr><th></th><th>Protocol</th><th>Creator</th><th>Referrer</th></tr>
-      <tr><td>With a referral</td><td>40%</td><td>40%</td><td>20%</td></tr>
-      <tr><td>Without</td><td>50%</td><td>50%</td><td>—</td></tr>
+      <tr><td>With a referral</td><td>20%</td><td>60%</td><td>20%</td></tr>
+      <tr><td>Without</td><td>30%</td><td>70%</td><td>—</td></tr>
     </table>
     <p>
       Those are shares of the 1% fee, not of the trade. On a $1,000 buy the fee is $10, split
-      $4 / $4 / $2. Fees accrue and are claimed on demand — nothing is ever pushed to you,
+      $2 / $6 / $2. Fees accrue and are claimed on demand — nothing is ever pushed to you,
       because a push-based split lets one hostile or blocked recipient break trading for
       everybody on that coin.
     </p>
 
     <h2 id="creator">Creator &amp; referral fees</h2>
     <p>
-      Creators earn 40–50% of every trading fee on their coin, for as long as it trades on the
-      curve, and half of the pool's fees after it graduates.
+      Creators earn 60–70% of every trading fee on their coin, for as long as it trades on the
+      curve, and 70% of the pool's fees after it graduates.
     </p>
     <p>
       Creators may buy their own launch with <b>no cap</b>, and it is <b>publicly recorded</b>.
@@ -163,7 +164,7 @@ reveal   →  deploys the token and curve, opens trading,
       <p>
         <b>Referrals apply to the launch phase.</b> After graduation, fees come from the pool's
         own fee tier and accrue in aggregate — there is no per-trade record to attribute, so
-        the split becomes 50/50 protocol and creator. Any launchpad promising lifetime referral
+        the split becomes 70% creator and 30% protocol. Any launchpad promising lifetime referral
         revenue on an open AMM pool is either routing everything through a bypassable router,
         or being imprecise.
       </p>
@@ -203,7 +204,7 @@ no timelock    no governance   no migration hatch</pre>
       referrer share applies to those, since Hexapus did not launch them.
     </p>
 
-    <h2 id="swap">Swap</h2>
+    <h2 id="bringing">Bringing USDC to Arc</h2>
     <p>
       Moving USDC to Arc uses <b>CCTP v2</b> natively — burned on the source chain, minted on
       Arc, no wrapped assets and no third-party bridge risk.
@@ -223,7 +224,7 @@ no timelock    no governance   no migration hatch</pre>
     <a href="#creator">Creator &amp; referral fees</a>
     <a href="#graduation">Graduation</a>
     <a href="#swap">Swap</a>
-    <a href="#swap">Swap</a>
+    <a href="#bringing">Bringing USDC to Arc</a>
   </nav>
 </div>
 

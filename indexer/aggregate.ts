@@ -140,21 +140,32 @@ export function decodeMetadata(uri: string) {
     } catch { return undefined; }
   };
   const text = (v: unknown) => (typeof v === 'string' && v.length <= 500 ? v : undefined);
+  // The commitment to the coin's asset packs. Its presence is what makes a launch mode 2, and
+  // because it is inside the metadata URI it is fixed at reveal like everything else here.
+  const packs = (v: unknown) =>
+    typeof v === 'string' && /^sha256:[0-9a-f]{64}$/.test(v) ? v.slice(7) : undefined;
   return {
     description: text(parsed.description),
     image: link(parsed.image),
     website: link(parsed.website),
     x: link(parsed.x),
     telegram: link(parsed.telegram),
+    packs: packs(parsed.packs),
   };
 }
 
 /** The artwork URL alone, which is all a list row needs. */
 export const imageOf = (uri: string | null | undefined) => decodeMetadata(uri ?? '').image ?? null;
+/**
+ * Whether a coin was launched as a Bundle. Derived from the on-chain metadata every time rather
+ * than stored, for the same reason the packs have no table: the commitment lives in the metadata
+ * URI, and a second copy is a second thing that can disagree with it.
+ */
+export const isBundle = (uri: string | null | undefined) => !!decodeMetadata(uri ?? '').packs;
 
 export type Metrics = {
   token: string; symbol: string | null; name: string | null; curve: string | null; phase: string;
-  image: string | null;
+  image: string | null; bundle: boolean;
   lastPrice: number; athPrice: number; mcap: number; ath: number;
   vol24h: number; traders24h: number; txns: number;
   change1h: number | null; change6h: number | null; change24h: number | null;
@@ -221,6 +232,7 @@ export function buildMetrics(store: Store, head: bigint): Metrics[] {
     out.push({
       token, symbol: m?.symbol ?? null, name: m?.name ?? null, curve: m?.curve ?? null,
       phase: m?.phase ?? 'UNKNOWN', image: imageOf(m?.metadata_uri),
+      bundle: isBundle(m?.metadata_uri),
       lastPrice: last, athPrice: ath, mcap: last * supply, ath: ath * supply,
       vol24h: a.vol24h, traders24h: a.traders24h.size, txns: a.txns,
       change1h: change(last, priceAt(a, b1h)),
@@ -244,6 +256,7 @@ export function decorate(store: Store, rows: { token: string }[]) {
       phase: m?.phase ?? 'UNKNOWN',
       creator: m?.creator ?? null,
       image: imageOf(m?.metadata_uri),
+      bundle: isBundle(m?.metadata_uri),
       revealBlock: m?.reveal_block ?? null,
       explorer: `https://testnet.arcscan.app/address/${r.token}`,
     };

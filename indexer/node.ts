@@ -2,12 +2,13 @@ import express from 'express';
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import { getAddress, type Address, type Log } from 'viem';
+import { getAddress, recoverMessageAddress, type Address, type Log } from 'viem';
 import { client, wsClient, config, ARC_CHAIN_ID, loadDeployment, factoryMismatch } from './config.js';
 import { openStore } from './store.js';
 import { TRANSFER, FACTORY_EVENTS, CURVE_EVENTS, MIGRATOR_EVENTS, ERC20_META } from './abi.js';
 import { scoreTrending, scoreMovers, RULES } from './trending.js';
-import { buildWindows, buildMetrics, decorate, decodeMetadata, imageOf, measureBlockRate, blockRate, WINDOWS, type WindowKey } from './aggregate.js';
+import { packStore, PACK_TYPES, LIMITS } from './packs.js';
+import { buildWindows, buildMetrics, decorate, decodeMetadata, imageOf, isBundle, measureBlockRate, blockRate, WINDOWS, type WindowKey } from './aggregate.js';
 
 const store = openStore(config.stateDir);
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -533,7 +534,8 @@ app.get('/metrics', async (_req, res) => {
 // needs, and every tab would otherwise base64-decode the same URIs itself.
 app.get('/launches', (req, res) => res.json(
   store.listLaunches(Math.min(Number(req.query.limit ?? 50), 500))
-    .map((r) => ({ ...r, image: imageOf(r.metadata_uri as string | null) })),
+    .map((r) => ({ ...r, image: imageOf(r.metadata_uri as string | null),
+                    bundle: isBundle(r.metadata_uri as string | null) })),
 ));
 
 /**
@@ -827,6 +829,153 @@ app.post('/upload', express.raw({ type: () => true, limit: MEDIA_MAX_VIDEO }), (
   const name = `${createHash('sha256').update(body).digest('hex').slice(0, 40)}.${ext}`;
   writeFileSync(join(MEDIA_DIR, name), body);
   res.json({ url: `/media/${name}`, bytes: body.length, type });
+});
+
+/* ── asset packs ────────────────────────────────────────────────────────────
+ * Mode 2 launches. `docs/PACKS.md` has the design; `packs.ts` has the storage rules.
+ *
+ * Uploads are unauthenticated on purpose, the same way `/upload` is: a manifest only means
+ * anything once a coin's on-chain metadata commits to its hash, so an unreferenced one is
+ * orphaned bytes rather than a claim about any coin. The size caps are what bound the disk.
+ */
+const packs = packStore(config.stateDir);
+
+// The parser's ceiling sits above the real cap on purpose. Set equal, express.raw rejects first
+// with a bare 413 and no body, and the readable "over 10 MB" below could never fire — the same
+// reason /upload gives the raw parser the video limit and checks images separately.
+app.post('/packs/asset', express.raw({ type: () => true, limit: LIMITS.bytesPerAsset + 1048576 }), (req, res) => {
+  const type = String(req.headers['content-type'] ?? '').split(';')[0]!.trim();
+  try {
+    res.json(packs.putAsset(req.body as Buffer, type));
+  } catch (e) {
+    res.status(type && !PACK_TYPES[type] ? 415 : 400).json({ error: (e as Error).message });
+  }
+});
+
+app.post('/packs/manifest', express.json({ limit: '256kb' }), (req, res) => {
+  try {
+    res.json(packs.putManifest(req.body));
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
+});
+
+/** Which manifest a coin committed to, from its on-chain metadata — never from a lookup table. */
+function packsOf(token: string) {
+  const row = store.launchMeta().find((l) => l.token?.toLowerCase() === token.toLowerCase());
+  if (!row) return null;
+  const hash = decodeMetadata(String(row.metadata_uri ?? '')).packs;
+  return hash ? { hash, row } : null;
+}
+
+/**
+ * What a pack is, without any of its bytes. Everything here is public: the point of a preview is
+ * to be seen before anyone holds the coin.
+ */
+app.get('/packs/:token', (req, res) => {
+  const found = packsOf(String(req.params.token));
+  if (!found) return void res.json({ packs: [] });
+  const removed = packs.removal(found.hash);
+  const m = packs.readManifest(found.hash);
+  if (!m) {
+    // The coin committed to a hash this node has never seen. Say so rather than reporting no
+    // packs — "we do not have it" and "there are none" are different answers.
+    return void res.json({ manifest: found.hash, missing: true, packs: [] });
+  }
+  res.json({
+    manifest: found.hash,
+    removed,
+    packs: m.packs.map((p, i) => ({
+      index: i, name: p.name, description: p.description, gate: p.gate,
+      assets: p.assets.length,
+      // Resolved here rather than in the page: whether a preview was generated or uploaded is a
+      // storage detail, and the client only ever needs somewhere to point an <img> at.
+      previewUrl: p.preview.kind === 'creator' ? p.preview.url
+                                              : `/packs/${found.hash}/preview/${i}`,
+    })),
+  });
+});
+
+/** Generated on first request and cached to disk — immutable, because the hash names the bytes. */
+app.get('/packs/:hash/preview/:index', async (req, res) => {
+  try {
+    const png = await packs.preview(String(req.params.hash), Number(req.params.index));
+    if (!png) return void res.status(404).json({ error: 'no such pack' });
+    res.setHeader('content-type', 'image/png');
+    res.setHeader('cache-control', 'public, max-age=31536000, immutable');
+    res.send(png);
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+/**
+ * Download one pack.
+ *
+ * The gate is checked against the chain's own `balanceOf`, not against holdings reconstructed
+ * from indexed trades: a wallet that received the coin as a plain transfer never appears in the
+ * trade history and would be told it does not hold what it is holding.
+ *
+ * A signature is proof of address, and it carries a timestamp so an intercepted one stops working
+ * shortly after. It is deliberately not hardened further — once a holder has the zip, the zip is
+ * out, which is the intended outcome for a pack whose job is to spread.
+ */
+const DOWNLOAD_WINDOW_MS = 5 * 60 * 1000;
+export const downloadMessage = (token: string, index: number, ts: number) =>
+  `Hexapus pack download\ntoken: ${token.toLowerCase()}\npack: ${index}\nat: ${ts}`;
+
+app.post('/packs/:token/download', express.json({ limit: '8kb' }), async (req, res) => {
+  const token = String(req.params.token);
+  const { index, address, signature, ts } = (req.body ?? {}) as
+    { index?: number; address?: string; signature?: string; ts?: number };
+
+  const found = packsOf(token);
+  if (!found) return void res.status(404).json({ error: 'no packs for this coin' });
+  const removed = packs.removal(found.hash);
+  if (removed) return void res.status(451).json({ error: removed });
+
+  const m = packs.readManifest(found.hash);
+  const pack = typeof index === 'number' ? m?.packs[index] : undefined;
+  if (!pack) return void res.status(404).json({ error: 'no such pack' });
+
+  if (pack.gate !== 'public') {
+    if (!address || !signature || typeof ts !== 'number') {
+      return void res.status(401).json({ error: 'signature required' });
+    }
+    if (Math.abs(Date.now() - ts) > DOWNLOAD_WINDOW_MS) {
+      return void res.status(401).json({ error: 'signature expired, try again' });
+    }
+    let signer: string;
+    try {
+      signer = await recoverMessageAddress({
+        message: downloadMessage(token, index!, ts), signature: signature as `0x${string}`,
+      });
+    } catch {
+      return void res.status(401).json({ error: 'bad signature' });
+    }
+    if (signer.toLowerCase() !== address.toLowerCase()) {
+      return void res.status(401).json({ error: 'signature does not match the address' });
+    }
+
+    if (pack.gate === 'graduated') {
+      if (String(found.row.phase) !== 'GRADUATED') {
+        return void res.status(403).json({ error: 'unlocks when the coin graduates' });
+      }
+    } else {
+      const held = await client.readContract({
+        address: token as Address, abi: abiOf('HexaToken') as never,
+        functionName: 'balanceOf', args: [getAddress(address)],
+      } as never) as bigint;
+      if (held <= 0n) return void res.status(403).json({ error: 'hold the coin to unlock this pack' });
+    }
+  }
+
+  const zip = packs.zip(found.hash, index!);
+  if (!zip) return void res.status(404).json({ error: 'no such pack' });
+  res.setHeader('content-type', 'application/zip');
+  res.setHeader('content-disposition',
+    `attachment; filename="${String(found.row.symbol ?? 'pack')}-${index! + 1}.zip"`);
+  res.send(zip);
 });
 
 const parseWindow = (q: unknown): WindowKey =>

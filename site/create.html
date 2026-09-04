@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Create new coin — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=27"/>
+<link rel="stylesheet" href="assets/app.css?v=29"/>
 <style>
   .layout{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start;max-width:1160px}
   @media(max-width:980px){.layout{grid-template-columns:1fr}}
@@ -26,6 +26,26 @@
   textarea{min-height:88px;resize:vertical;line-height:1.6}
   input:focus,select:focus,textarea:focus{border-color:rgba(232,121,249,.5)}
   input::placeholder,textarea::placeholder{color:var(--dim)}
+  /* ── dropdown ────────────────────────────────────────
+   * Not a <select>. Its popup is drawn by the platform, so its width, corners and highlight
+   * colour are out of this page's reach — `color-scheme:dark` got it dark but left a square,
+   * misaligned panel with a system-blue row under a rounded purple control. This is the same
+   * .menu/.pop pattern the coin terminal already uses, so every dropdown on the site matches. */
+  .menu{position:relative}
+  .menu .trigger{width:100%;display:flex;align-items:center;gap:8px;padding:10px 13px;
+    border-radius:10px;font-size:15px;color:var(--ink);text-align:left;
+    background:rgba(255,255,255,.04);border:1px solid var(--line)}
+  .menu .trigger:hover{border-color:rgba(232,121,249,.35)}
+  .menu .trigger[aria-expanded=true]{border-color:rgba(232,121,249,.5)}
+  .menu .trigger i{margin-left:auto;font-style:normal;font-size:9px;opacity:.7}
+  .menu .pop{position:absolute;top:calc(100% + 6px);left:0;right:0;padding:6px;z-index:50;
+    background:#14161c;border:1px solid var(--line);border-radius:12px;
+    box-shadow:0 20px 46px -16px rgba(0,0,0,.85)}
+  .menu .pop[hidden]{display:none}
+  .menu .pop button{display:block;width:100%;text-align:left;padding:9px 11px;border-radius:8px;
+    font-size:14px;color:var(--muted)}
+  .menu .pop button:hover{background:rgba(255,255,255,.06);color:var(--ink)}
+  .menu .pop button[aria-selected=true]{background:rgba(232,121,249,.14);color:#e879f9}
 
   .drop{border:1px dashed rgba(255,255,255,.22);border-radius:14px;padding:34px 20px;text-align:center;
     cursor:pointer;transition:border-color .16s,background .16s}
@@ -47,6 +67,45 @@
   .social-toggle .car{transition:transform .18s;font-size:12px}
   .social-toggle[aria-expanded=true] .car{transform:rotate(180deg)}
   #socials[hidden]{display:none}
+
+  /* ── launch mode ─────────────────────────────────────── */
+  .modes{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  @media(max-width:640px){.modes{grid-template-columns:1fr}}
+  .mode{text-align:left;padding:13px 15px;border-radius:12px;border:1px solid var(--line);
+    background:rgba(255,255,255,.03);transition:border-color .16s,background .16s}
+  .mode:hover{border-color:rgba(232,121,249,.4)}
+  .mode[aria-selected=true]{border-color:#e879f9;background:rgba(232,121,249,.09)}
+  .mode b{display:block;font-size:14.5px;font-weight:620;margin-bottom:3px}
+  .mode span{display:block;font-size:12.5px;color:var(--dim);line-height:1.5}
+
+  /* ── asset packs ─────────────────────────────────────── */
+  .pack{border:1px solid var(--line);border-radius:13px;padding:15px;margin-bottom:12px;
+    background:rgba(255,255,255,.02)}
+  .pack-hd{display:flex;align-items:center;gap:9px;margin-bottom:12px}
+  .pack-hd b{font-size:13.5px;font-weight:620}
+  .pack-hd .rm{margin-left:auto;padding:3px 9px;border-radius:7px;font-size:12px;color:var(--dim);
+    background:rgba(255,255,255,.05);border:1px solid var(--line)}
+  .pack-hd .rm:hover{color:#ff6b81;border-color:rgba(255,107,129,.4)}
+  .pack .drop{padding:18px 14px}
+  /* Thumbnails rather than a list of filenames: the creator is picking artwork, and the only
+     way to see they picked the wrong file is to look at it. */
+  .shots{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+  .shot{position:relative;width:56px;height:56px;border-radius:9px;overflow:hidden;
+    border:1px solid var(--line);background:#0c0e13}
+  .shot img{width:100%;height:100%;object-fit:cover;display:block}
+  .shot button{position:absolute;top:0;right:0;width:17px;height:17px;line-height:15px;
+    font-size:12px;color:#fff;background:rgba(0,0,0,.68);border-bottom-left-radius:7px}
+  .shot button:hover{background:#e8465f}
+  .budget{display:flex;align-items:center;gap:10px;margin-top:14px}
+  .budget .bar{flex:1;height:5px;border-radius:99px;overflow:hidden;background:rgba(255,255,255,.07)}
+  .budget .bar i{display:block;height:100%;width:0;border-radius:99px;
+    background:linear-gradient(90deg,#f078f0,#a848f0);transition:width .2s}
+  .budget .bar i.over{background:linear-gradient(90deg,#ff8b9f,#e8465f)}
+  .budget span{font:400 12px var(--num);color:var(--dim);white-space:nowrap}
+
+  .radio{display:flex;gap:16px;flex-wrap:wrap;margin-top:5px}
+  .radio label{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted);cursor:pointer}
+  .radio input{accent-color:#e879f9}
 
   .preview{position:sticky;top:80px}
   .preview > h3{font-size:16px;font-weight:620;margin-bottom:14px}
@@ -82,6 +141,20 @@
 
   <div class="layout">
     <div>
+      <!-- Mode is the first choice because it changes what the rest of the form asks for: a coin
+           that ships packs must also ship a story. -->
+      <section class="glass block">
+        <h3>Launch mode</h3>
+        <div class="modes" id="modes">
+          <button class="mode" data-mode="1" aria-selected="true">
+            <b>Coin</b><span>Name, ticker and artwork. The standard launch.</span>
+          </button>
+          <button class="mode" data-mode="2" aria-selected="false">
+            <b>Bundle</b><span>A coin that ships stickers, icons or sprites for holders to download.</span>
+          </button>
+        </div>
+      </section>
+
       <section class="glass block">
         <h3>Coin details</h3>
         <div class="hint">Choose carefully — none of this can be changed once the coin is created.</div>
@@ -98,8 +171,9 @@
         </div>
 
         <div class="f">
-          <label for="desc">Description <span>(Optional)</span></label>
-          <textarea id="desc" placeholder="Write a short description" maxlength="500"></textarea>
+          <label for="desc">Story <span>(Optional)</span></label>
+          <textarea id="desc" placeholder="Where did this meme come from? Buyers read this on the coin's page."
+                    maxlength="500"></textarea>
         </div>
 
         <div class="f">
@@ -157,6 +231,26 @@
           </div>
           <div class="f"><label for="tg">Telegram</label><input id="tg" type="text" placeholder="Add URL"/></div>
         </div>
+      </section>
+
+      <section class="glass block" id="packSection" hidden>
+        <h3>Asset packs</h3>
+        <div class="hint">
+          What a buyer gets besides the ticker. Images only — PNG, JPG, WebP or GIF. You get
+          <b>50 MB</b> across the coin and spend it however suits: twenty small stickers or five
+          large sprite sheets. No single file may be over 10 MB. Once the coin is created these
+          are fixed — their fingerprint goes on-chain with everything else, so a later swap is
+          visible rather than silent.
+        </div>
+        <div id="packList"></div>
+        <button class="btn" id="addPack" style="margin-top:4px">+ Add pack</button>
+        <!-- Shown while files are being picked, not discovered at submit: hitting the ceiling
+             after choosing twenty images means redoing the whole selection. -->
+        <div class="budget" id="budget">
+          <div class="bar"><i id="budgetFill"></i></div>
+          <span id="budgetText"></span>
+        </div>
+        <div class="note" id="packnote" style="color:#ff6b81"></div>
       </section>
 
       <section class="glass block">
@@ -332,8 +426,12 @@ $('image').addEventListener('change', async () => {
 function gate() {
   const btn = $('go');
   if (!btn) return;
-  btn.disabled = !pickedFile || !feeLoaded || !checkBuyIn();
-  $('gonote').hidden = !!pickedFile;
+  const packBad = packsProblem();
+  btn.disabled = !pickedFile || !feeLoaded || !checkBuyIn() || !!packBad;
+  // One reason at a time, and artwork first — it is the one that applies to every launch.
+  $('gonote').textContent = !pickedFile
+    ? 'Add an image or video above — every coin needs artwork.' : packBad;
+  $('gonote').hidden = !!pickedFile && !packBad;
 }
 
 function showPicked() {
@@ -375,8 +473,309 @@ async function uploadArtwork() {
   return uploadedUrl;
 }
 
+/* ── asset packs (mode 2) ───────────────────────────────────────────────────
+ * State lives in this array and the DOM is rendered from it, rather than the DOM being the
+ * state: packs can be removed from the middle, and reading names back out of inputs by index
+ * after a splice is how the wrong description ends up on the wrong pack.
+ *
+ * Files are held unsent until launch. Uploading as they are picked would be smoother, but it
+ * would also fill the indexer's disk with packs for coins nobody ever created.
+ */
+/**
+ * Mirrors indexer/packs.ts LIMITS — see the reasoning there. The short version: COIN_MAX_BYTES
+ * is the budget and the creator spends it as they like, ASSET_MAX_BYTES only stops one file
+ * taking all of it. Twenty 2 MB files and ten 5 MB files both fit.
+ */
+const PACK_MAX = 5, ASSETS_MAX = 20, ASSET_MAX_BYTES = 10 * 1024 * 1024, COIN_MAX_BYTES = 50 * 1024 * 1024;
+// A decimal only when there is one to show. Rounding by magnitude instead reported a rejected
+// 10.5 MB file as "11 MB", against a limit of 10 — which reads as a bug in the limit.
+const MB = (b) => {
+  const m = b / 1048576;
+  return (Number.isInteger(m) ? m : m.toFixed(1)) + ' MB';
+};
+const PACK_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+const GATES = [
+  ['holder', 'Anyone holding the coin'],
+  ['public', 'Anyone at all'],
+  ['graduated', 'Everyone, once the coin graduates'],
+];
+
+let mode = 1;
+let packs = [];                 // { name, description, gate, files: File[], previewKind, previewFile }
+let uid = 0;
+
+const newPack = () => ({ id: ++uid, name: '', description: '', gate: 'holder',
+                         files: [], previewKind: 'auto', previewFile: null });
+
+$('modes').addEventListener('click', (e) => {
+  const b = e.target.closest('.mode');
+  if (!b) return;
+  mode = Number(b.dataset.mode);
+  for (const el of $('modes').children) el.setAttribute('aria-selected', String(Number(el.dataset.mode) === mode));
+  $('packSection').hidden = mode !== 2;
+  // A coin that ships packs has to say what it is. Mode 1 leaves the story optional.
+  $('desc').closest('.f').querySelector('label span').textContent = mode === 2 ? '(Required)' : '(Optional)';
+  if (mode === 2 && packs.length === 0) packs.push(newPack());
+  renderPacks();
+  gate();
+});
+
+$('addPack').addEventListener('click', () => {
+  if (packs.length >= PACK_MAX) return;
+  packs.push(newPack());
+  renderPacks();
+  gate();
+});
+
+const usedBytes = () => packs.reduce((a, p) => a + p.files.reduce((b, f) => b + f.size, 0), 0);
+
+function renderPacks() {
+  const host = $('packList');
+  host.textContent = '';
+  packs.forEach((p, i) => host.appendChild(packCard(p, i)));
+  $('addPack').hidden = packs.length >= PACK_MAX;
+  paintBudget();
+}
+
+function paintBudget() {
+  const used = usedBytes();
+  const over = used > COIN_MAX_BYTES;
+  $('budgetFill').style.width = Math.min(100, (used / COIN_MAX_BYTES) * 100) + '%';
+  $('budgetFill').classList.toggle('over', over);
+  $('budgetText').textContent = over
+    ? `${MB(used)} — ${MB(used - COIN_MAX_BYTES)} over`
+    : `${MB(COIN_MAX_BYTES - used)} left of ${MB(COIN_MAX_BYTES)}`;
+}
+
+function packCard(p, i) {
+  const el = document.createElement('div');
+  el.className = 'pack';
+  el.innerHTML = `
+    <div class="pack-hd"><b>Pack ${i + 1}</b><button class="rm" type="button">Remove</button></div>
+    <div class="grid2">
+      <div class="f"><label>Pack name</label>
+        <input class="p-name" type="text" maxlength="60" placeholder="Sticker pack"/></div>
+      <div class="f"><label>Unlocks for</label>
+        <div class="menu p-gate">
+          <button type="button" class="trigger" aria-expanded="false"><span></span> <i>▾</i></button>
+          <div class="pop" hidden>
+            ${GATES.map(([v, t]) => `<button type="button" data-g="${v}">${t}</button>`).join('')}
+          </div>
+        </div></div>
+    </div>
+    <div class="f"><label>What is in it</label>
+      <textarea class="p-desc" maxlength="300" placeholder="12 Telegram stickers, 512×512, transparent."></textarea></div>
+    <div class="f">
+      <label>Files <span>(up to ${ASSETS_MAX})</span></label>
+      <input class="p-files" type="file" accept="${PACK_TYPES.join(',')}" multiple hidden/>
+      <div class="drop p-drop" role="button" tabindex="0">
+        <b>Drag images here</b><i>PNG, JPG, WebP or GIF</i>
+        <span class="btn btn-p">Select files</span>
+      </div>
+      <div class="shots"></div>
+    </div>
+    <div class="f" style="margin-bottom:0"><label>Preview</label>
+      <div class="radio">
+        <label><input type="radio" name="pv${p.id}" value="auto"/> Generated from the files</label>
+        <label><input type="radio" name="pv${p.id}" value="creator"/> Upload my own</label>
+      </div>
+      <input class="p-pv" type="file" accept="${PACK_TYPES.join(',')}" hidden/>
+      <div class="shots pv-shots"></div>
+    </div>`;
+
+  const q = (s) => el.querySelector(s);
+  q('.p-name').value = p.name;
+  q('.p-desc').value = p.description;
+  q(`input[name="pv${p.id}"][value="${p.previewKind}"]`).checked = true;
+
+  q('.rm').addEventListener('click', () => { packs.splice(i, 1); renderPacks(); gate(); });
+  q('.p-name').addEventListener('input', (e) => { p.name = e.target.value; gate(); });
+  q('.p-desc').addEventListener('input', (e) => { p.description = e.target.value; gate(); });
+
+  const menu = q('.p-gate'), trigger = menu.querySelector('.trigger'), pop = menu.querySelector('.pop');
+  const paintGate = () => {
+    trigger.querySelector('span').textContent = GATES.find(([v]) => v === p.gate)[1];
+    for (const b of pop.querySelectorAll('button')) {
+      b.setAttribute('aria-selected', String(b.dataset.g === p.gate));
+    }
+  };
+  paintGate();
+  trigger.addEventListener('click', () => {
+    const open = pop.hidden;
+    closeMenus();
+    pop.hidden = !open;
+    trigger.setAttribute('aria-expanded', String(open));
+  });
+  pop.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-g]');
+    if (!b) return;
+    p.gate = b.dataset.g;
+    paintGate();
+    closeMenus();
+  });
+
+  for (const r of el.querySelectorAll(`input[name="pv${p.id}"]`)) {
+    r.addEventListener('change', () => {
+      p.previewKind = r.value;
+      if (r.value === 'creator' && !p.previewFile) q('.p-pv').click();
+      else paintShots();
+    });
+  }
+  q('.p-pv').addEventListener('change', (e) => {
+    const f = e.target.files?.[0];
+    // Falling back to 'auto' rather than leaving a "upload my own" pack with nothing to show:
+    // an empty custom preview would pass the form and produce a blank card on the coin page.
+    if (!f || !acceptAsset(f)) { p.previewKind = 'auto'; renderPacks(); return; }
+    p.previewFile = f;
+    paintShots();
+  });
+
+  const files = q('.p-files');
+  q('.p-drop').addEventListener('click', (e) => { if (e.target !== files) files.click(); });
+  q('.p-drop').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); files.click(); }
+  });
+  for (const t of ['dragenter', 'dragover']) {
+    q('.p-drop').addEventListener(t, (e) => { e.preventDefault(); q('.p-drop').classList.add('over'); });
+  }
+  for (const t of ['dragleave', 'drop']) q('.p-drop').addEventListener(t, () => q('.p-drop').classList.remove('over'));
+  q('.p-drop').addEventListener('drop', (e) => { e.preventDefault(); addFiles([...(e.dataTransfer?.files ?? [])]); });
+  files.addEventListener('change', () => { addFiles([...files.files]); files.value = ''; });
+
+  function addFiles(list) {
+    for (const f of list) {
+      if (p.files.length >= ASSETS_MAX) break;
+      if (acceptAsset(f)) p.files.push(f);
+    }
+    paintShots();
+    paintBudget();
+    gate();
+  }
+
+  /** Object URLs are revoked on every repaint — one per picked file per keystroke otherwise. */
+  function paintShots() {
+    const box = q('.shots:not(.pv-shots)'), pv = q('.pv-shots');
+    for (const img of el.querySelectorAll('.shot img')) URL.revokeObjectURL(img.src);
+    box.textContent = ''; pv.textContent = '';
+    p.files.forEach((f, n) => box.appendChild(
+      shot(f, () => { p.files.splice(n, 1); paintShots(); paintBudget(); gate(); })));
+    if (p.previewKind === 'creator' && p.previewFile) {
+      pv.appendChild(shot(p.previewFile, () => { p.previewFile = null; p.previewKind = 'auto'; renderPacks(); }));
+    }
+  }
+  paintShots();
+  return el;
+}
+
+/** Only one dropdown open at a time, and a click anywhere else shuts it. */
+function closeMenus() {
+  for (const m of document.querySelectorAll('.menu')) {
+    m.querySelector('.pop').hidden = true;
+    m.querySelector('.trigger').setAttribute('aria-expanded', 'false');
+  }
+}
+document.addEventListener('click', (e) => { if (!e.target.closest('.menu')) closeMenus(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenus(); });
+
+function shot(file, onRemove) {
+  const d = document.createElement('div');
+  d.className = 'shot';
+  const img = document.createElement('img');
+  img.src = URL.createObjectURL(file);
+  img.alt = file.name;
+  const x = document.createElement('button');
+  x.type = 'button'; x.textContent = '×'; x.title = `Remove ${file.name}`;
+  x.addEventListener('click', onRemove);
+  d.append(img, x);
+  return d;
+}
+
+function acceptAsset(f) {
+  const note = $('packnote');
+  if (!PACK_TYPES.includes(f.type)) {
+    note.textContent = `${f.name} is not an image. Packs take PNG, JPG, WebP or GIF.`;
+    return false;
+  }
+  if (f.size > ASSET_MAX_BYTES) {
+    note.textContent = `${f.name} is ${MB(f.size)} — no single file may be over ${MB(ASSET_MAX_BYTES)}.`;
+    return false;
+  }
+  note.textContent = '';
+  return true;
+}
+
+/** Empty string when the packs are launchable, otherwise the first reason they are not. */
+function packsProblem() {
+  if (mode !== 2) return '';
+  if (!$('desc').value.trim()) return 'A coin that ships packs needs a story.';
+  if (!packs.length) return 'Add at least one pack.';
+  for (const [i, p] of packs.entries()) {
+    const n = `Pack ${i + 1}`;
+    if (!p.name.trim()) return `${n} needs a name.`;
+    if (!p.description.trim()) return `${n} needs a description.`;
+    if (!p.files.length) return `${n} has no files.`;
+  }
+  const total = usedBytes();
+  if (total > COIN_MAX_BYTES) {
+    return `The packs come to ${MB(total)} — the budget is ${MB(COIN_MAX_BYTES)} per coin.`;
+  }
+  return '';
+}
+
+/**
+ * Upload every asset, then the manifest. Returns the hash that goes on-chain.
+ *
+ * Assets go up one at a time on purpose: twenty parallel 2 MB uploads is how a phone connection
+ * times out halfway and leaves the creator with no idea which half arrived.
+ */
+async function uploadPacks(onProgress) {
+  const put = async (file) => {
+    const r = await fetch(`${HEXA_API}/packs/asset`, {
+      method: 'POST', body: file, headers: { 'content-type': file.type },
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(`${file.name}: ${j.error ?? r.status}`);
+    return j;
+  };
+
+  const total = packs.reduce((a, p) => a + p.files.length + (p.previewKind === 'creator' && p.previewFile ? 1 : 0), 0);
+  let done = 0;
+  const out = [];
+
+  for (const p of packs) {
+    const assets = [];
+    for (const f of p.files) {
+      assets.push((await put(f)).asset);
+      onProgress(++done, total);
+    }
+    let preview = { kind: 'auto' };
+    if (p.previewKind === 'creator' && p.previewFile) {
+      // The creator's own preview is public artwork, so it goes to /media like the coin image —
+      // not into the gated pack store, which nothing may read without a wallet.
+      const r = await fetch(`${HEXA_API}/upload`, {
+        method: 'POST', body: p.previewFile, headers: { 'content-type': p.previewFile.type },
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(`Preview upload failed: ${j.error ?? r.status}`);
+      preview = { kind: 'creator', url: j.url };
+      onProgress(++done, total);
+    }
+    out.push({ name: p.name.trim(), description: p.description.trim(), gate: p.gate, assets, preview });
+  }
+
+  const r = await fetch(`${HEXA_API}/packs/manifest`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ packs: out }),
+  });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error ?? `Manifest rejected (${r.status})`);
+  return j.hash;
+}
+
 // ── live preview ────────────────────────────────────────────────────────────
 for (const id of ['name', 'symbol', 'desc', 'web', 'x', 'tg']) $(id).addEventListener('input', preview);
+// The story is required in mode 2, so typing into it can be what unblocks the button.
+$('desc').addEventListener('input', gate);
 
 function preview() {
   const name = $('name').value.trim(), symbol = $('symbol').value.trim().toUpperCase();
@@ -461,7 +860,7 @@ $('devbuy').addEventListener('input', () => { checkBuyIn(); showCost(); gate(); 
  * encoded into a data: URI, so it travels inside the launch event and is as permanent as the
  * coin. An image URL is referenced, not embedded: images are too large to put in calldata.
  */
-function buildMetadataURI(imageUrl) {
+function buildMetadataURI(imageUrl, packsHash) {
   const meta = {
     name: $('name').value.trim(),
     symbol: $('symbol').value.trim().toUpperCase(),
@@ -470,6 +869,9 @@ function buildMetadataURI(imageUrl) {
     website: $('web').value.trim() || undefined,
     x: $('x').value.trim() || undefined,
     telegram: $('tg').value.trim() || undefined,
+    // The commitment to the packs. Only the fingerprint goes on-chain — the files stay off it,
+    // but swapping them afterwards no longer matches what the coin was launched with.
+    packs: packsHash ? `sha256:${packsHash}` : undefined,
   };
   for (const k of Object.keys(meta)) if (meta[k] === undefined) delete meta[k];
   const json = JSON.stringify(meta);
@@ -490,10 +892,15 @@ $('go').addEventListener('click', async () => {
   if (!pickedFile) return (err.textContent = 'Add an image or video first.');
 
   const btn0 = $('go');
-  let imageUrl = null;
+  let imageUrl = null, packsHash = null;
   try {
     btn0.textContent = 'Uploading artwork…';
     imageUrl = await uploadArtwork();
+    // Before the commit, because the manifest hash has to be inside the metadata that the
+    // commit hashes over. There is no adding it between commit and reveal.
+    if (mode === 2) {
+      packsHash = await uploadPacks((n, of) => (btn0.textContent = `Uploading pack files ${n}/${of}…`));
+    }
   } catch (e) {
     btn0.textContent = 'Create coin';
     return (err.textContent = explain(e));
@@ -502,7 +909,7 @@ $('go').addEventListener('click', async () => {
   // Fixed curve: every coin opens at a $2,000 market cap. docs/CURVE.md §4.
   const params = {
     name, symbol,
-    metadataURI: buildMetadataURI(imageUrl),
+    metadataURI: buildMetadataURI(imageUrl, packsHash),
     totalSupply: 1_000_000_000n * E18,
     virtualUsdc: 2_146n * E18,
     virtualTokens: 1_073_000_000n * E18,

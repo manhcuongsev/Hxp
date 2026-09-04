@@ -93,9 +93,12 @@ contract LiquidityLocker {
         uint256 usdcAmount = t0 == address(usdc) ? amount0 : amount1;
 
         if (usdcAmount > 0) {
-            // 50/50 protocol/creator. Referral attribution cannot survive graduation: pool
+            // 70/30 creator/protocol. Referral attribution cannot survive graduation: pool
             // fees accrue in aggregate with no per-trade record to attribute. docs/FEES.md.
-            uint256 toCreator = usdcAmount / 2;
+            //
+            // Protocol takes the remainder rather than its own percentage, so the two parts
+            // always sum to exactly usdcAmount and the vault can never owe more than it holds.
+            uint256 toCreator = (usdcAmount * 7_000) / 10_000;
             uint256 toProtocol = usdcAmount - toCreator;
             usdc.transfer(address(vault), usdcAmount);
             vault.credit(

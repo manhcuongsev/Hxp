@@ -31,9 +31,15 @@ contract HexaCurve {
     uint256 public constant FEE_BPS = 100; // 1% total trading fee
 
     // Fee split, in bps of the fee. See docs/FEES.md.
+    //
+    //   with a referrer:  creator 60%, referrer 20%, protocol 20%
+    //   without one:      creator 70%,               protocol 30%
+    //
+    // The unclaimed referral share is split rather than handed to either side, so neither the
+    // creator nor the protocol has a reason to care whether a trade arrived through a link.
     uint256 private constant REF_SHARE = 2_000; // 20% to referrer, when there is one
-    uint256 private constant CREATOR_SHARE_REFERRED = 4_000;
-    uint256 private constant CREATOR_SHARE_PLAIN = 5_000;
+    uint256 private constant CREATOR_SHARE_REFERRED = 6_000;
+    uint256 private constant CREATOR_SHARE_PLAIN = 7_000;
 
     /// @dev Native (18-dec) to USDC ERC-20 (6-dec). Same funds, 12 orders of magnitude apart.
     uint256 private constant NATIVE_TO_ERC20 = 1e12;

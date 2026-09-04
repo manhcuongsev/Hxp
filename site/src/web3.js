@@ -168,6 +168,18 @@ export async function write(address, name, fn, args = [], value = 0n) {
   return receipt;
 }
 
+/**
+ * Sign a plain message, for proving an address to our own API.
+ *
+ * No chain switch: a personal_sign costs nothing, touches no contract, and the signature is the
+ * same whichever network the wallet happens to be on. Forcing a switch to Arc first would be a
+ * pointless prompt.
+ */
+export async function signMessage(message) {
+  if (!wallet) throw new Error('Connect a wallet first.');
+  return wallet.signMessage({ account, message });
+}
+
 export const LAUNCH_TUPLE = {
   type: 'tuple',
   components: [

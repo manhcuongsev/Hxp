@@ -20,14 +20,18 @@ Total: **1%** of the quote leg (USDC), on both buy and sell.
 
 | | Protocol | Creator | Referrer |
 |---|---|---|---|
-| Trade **with** a referrer | 40% | 40% | 20% |
-| Trade **without** a referrer | 50% | 50% | — |
+| Trade **with** a referrer | 20% | 60% | 20% |
+| Trade **without** a referrer | 30% | 70% | — |
 
 Shares are of the **1% fee**, not of the trade. On a $1,000 buy the fee is $10, split
-$4 / $4 / $2.
+$2 / $6 / $2.
 
-> Note on the brief: the request said "40% của referrer" but the worked example said 20%.
-> The example is self-consistent (40/40/20 = 100) so that is what is specified here.
+The unclaimed referral share is **split** when a trade has no referrer, rather than handed to
+either side. Giving it all to the protocol would make Hexapus prefer trades that arrive without
+a link; giving it all to the creator would make the creator prefer the same. Splitting it leaves
+neither with a reason to care.
+
+> Revised 2026-09-04 from 40/40/20 and 50/50. Creators keep more of both phases.
 
 ## Referral model: single-tier, first-touch, per token
 
@@ -69,8 +73,8 @@ This is worth being straight about rather than engineering against: the worst ca
 a sophisticated user pays 0.8% instead of 1%. Every referral programme in the industry has
 this property. It is a 20-basis-point discount for people who bother, not an exploit.
 
-The creator referring their own audience is not an exploit either — they earn 40% + 20% =
-60% for doing the marketing. That is the system working.
+The creator referring their own audience is not an exploit either — they earn 60% + 20% =
+80% for doing the marketing. That is the system working.
 
 ### Where referrals stop working
 
@@ -87,8 +91,8 @@ So:
 
 | Phase | Fee source | Referral works? |
 |---|---|---|
-| Bonding curve | Our contract, per-trade | ✅ 40/40/20 |
-| After graduation | Pool fee tier, aggregate | ❌ 50/50 protocol/creator |
+| Bonding curve | Our contract, per-trade | ✅ 20/60/20 |
+| After graduation | Pool fee tier, aggregate | ❌ 30/70 protocol/creator |
 
 Any launchpad advertising lifetime referral revenue on an open AMM pool is either routing
 all volume through a bypassable router, or not being precise. Hexapus should say plainly

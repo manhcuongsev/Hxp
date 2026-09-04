@@ -27,6 +27,7 @@
     "dotenv": "16.4.5",
     "express": "^5.2.1",
     "lightweight-charts": "^5.2.1",
+    "sharp": "^0.35.4",
     "viem": "2.55.2"
   },
   "devDependencies": {

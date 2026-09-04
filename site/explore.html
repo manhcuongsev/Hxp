@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Explore coins — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=27"/>
+<link rel="stylesheet" href="assets/app.css?v=29"/>
 </head>
 <body>
 <div class="shell"><aside id="side"></aside><div id="body">
@@ -35,6 +35,12 @@
           <button aria-selected="false" data-f="24h">24H</button>
           <button aria-selected="false" data-f="all">ALL</button>
         </div>
+        <!-- Ranked tabs only. New, Referrer and Migrated are already short lists you scan, but
+             Trending and Movers are the ones where a Bundle can be buried under coins that
+             ship nothing. -->
+        <button class="onlybundle" id="onlyBundle" aria-pressed="false" hidden>
+          <span class="tag bundle">BUNDLE</span> only
+        </button>
         <span class="dim" id="hint" style="font-size:12.5px"></span>
       </div>
 
@@ -212,7 +218,8 @@ function coinCard(c, extra = '') {
       <button class="star" data-star="${c.token}" title="Watchlist"
         style="position:absolute;top:8px;right:8px;font-size:16px;color:#fff;opacity:.8">${starred}</button></div>
     <div class="body">
-      <div class="nm"><b>${c.symbol ?? '???'}</b><span>${c.name ?? ''}</span></div>
+      <div class="nm"><b>${c.symbol ?? '???'}</b><span>${c.name ?? ''}</span>
+        ${c.bundle ? '<span class="tag bundle">BUNDLE</span>' : ''}</div>
       <div class="cstats">
         ${stat('MCap', c.mcap != null ? usd(c.mcap) : '—')}
         ${stat('Price', price6(c.lastPrice ?? 0))}
@@ -243,8 +250,11 @@ const RENDER = {
          ${why ? `<ul style="margin:10px 0 0 18px">${why}</ul>` : ''}
          <div style="margin-top:12px">On a young chain these thresholds exclude almost everything.</div>`);
     }
+    const rows = onlyBundles(await withMetrics(d.rows));
+    if (!rows.length) return show('empty', 'No bundles ranked in this window',
+      'Nothing that ships asset packs made this window. Turn the filter off to see everything.');
     clearState();
-    paint((await withMetrics(d.rows)).map((r) => coinCard(r, `
+    paint(rows.map((r) => coinCard(r, `
       <div class="meta"><span class="tag hx">${r.phase}</span>
         <span>vol ${usd(r.volumeUsd)} · ${r.newWallets} new</span></div>
       <div class="meta"><span class="dim">turnover ${r.turnover.toFixed(2)}×</span>
@@ -256,8 +266,11 @@ const RENDER = {
     const d = await get(HEXA_API, `/movers?window=${w}`);
     if (!d.rows.length) return show('empty', 'No volume in this window',
       `Nothing has traded in the last <b>${w}</b>. Try <b>ALL</b>.`);
+    const rows = onlyBundles(await withMetrics(d.rows));
+    if (!rows.length) return show('empty', 'No bundles moved in this window',
+      'Nothing that ships asset packs traded in this window. Turn the filter off to see everything.');
     clearState();
-    paint((await withMetrics(d.rows)).map((r) => coinCard(r, `
+    paint(rows.map((r) => coinCard(r, `
       <div class="meta"><span class="tag hx">${r.phase}</span>
         <span>${r.trades} trades · liq ${usd(r.liquidityUsd)}</span></div>`)).join(''));
   },
@@ -333,7 +346,8 @@ const RENDER = {
           <span class="av av-lg">${hexaShell.art(m.token, m.image, { eager: true })}</span>
           <div><b>${m.name ?? '—'}</b><br>
           <span class="pair">$${m.symbol ?? '???'}</span>
-          <span class="tag ${m.phase === 'GRADUATED' ? 'v3' : 'hx'}" style="font-size:9px">${m.phase}</span></div></div></td>
+          <span class="tag ${m.phase === 'GRADUATED' ? 'v3' : 'hx'}" style="font-size:9px">${m.phase}</span>
+          ${m.bundle ? '<span class="tag bundle" style="font-size:9px">BUNDLE</span>' : ''}</div></div></td>
         <td class="num">${usd(m.mcap)}</td>
         <td class="num">${price6(m.lastPrice)}</td>
         <td class="num">${usd(m.ath)}</td>
@@ -369,6 +383,23 @@ let currentTab = 'trending';
 let monPage = 1, monHead = 0;
 const pager = document.getElementById('pager');
 const currentWindow = () => document.querySelector('#frames button[aria-selected=true]')?.dataset.f ?? '1h';
+
+/**
+ * "Bundle only" on the two ranked tabs.
+ *
+ * Filtered after the rows come back rather than by asking the indexer for a subset: the ranking
+ * is what those tabs are for, and re-ranking a filtered set would let a Bundle with two trades
+ * outrank one with two hundred simply because the competition was hidden. This narrows the list;
+ * it does not reshuffle it.
+ */
+const $onlyBundle = document.getElementById('onlyBundle');
+const bundleOnly = () => $onlyBundle.getAttribute('aria-pressed') === 'true';
+const onlyBundles = (rows) => (bundleOnly() ? rows.filter((r) => r.bundle) : rows);
+
+$onlyBundle.addEventListener('click', () => {
+  $onlyBundle.setAttribute('aria-pressed', String(!bundleOnly()));
+  render(currentTab);
+});
 
 /** Age is measured back from the current head, which /health reports. */
 async function syncHead() {
@@ -414,7 +445,9 @@ async function render(tab, { silent = false } = {}) {
   if (tab !== currentTab) monPage = 1; // a new tab should not land on page 7 of the old one
   currentTab = tab;
   hint.textContent = HINTS[tab] ?? '';
-  frames.hidden = !['trending', 'movers'].includes(tab);
+  const ranked = ['trending', 'movers'].includes(tab);
+  frames.hidden = !ranked;
+  $onlyBundle.hidden = !ranked;
   // The 20s refresh runs silent: tearing the list down to a "Loading…" box and building it
   // back is what made the page look like it was reloading itself every few seconds.
   if (!silent) {

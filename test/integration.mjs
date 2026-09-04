@@ -85,7 +85,16 @@ const defaults = {
   sellTaxFloorBps: 100, creatorMaxBps: 300, minBuyIn: MIN_BUY,
 };
 const CREATION_FEE = parseEther('0.5');
-const factory = await deploy(art('HexaFactory'), [usdc.address, account.address, defaults, CREATION_FEE]);
+/**
+ * Deliberately not the deployer.
+ *
+ * A curve copies `treasury` at initialize() and credits it alongside the creator, so if the two
+ * are the same address every split lands on one balance and adds up to 100% — which looks like
+ * "the creator takes everything" and can never show what the split actually is. `setTreasury`
+ * cannot fix it after the fact: it only reaches coins launched later.
+ */
+const TREASURY = '0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65';   // anvil #4, no other role here
+const factory = await deploy(art('HexaFactory'), [usdc.address, TREASURY, defaults, CREATION_FEE]);
 const migrator = await deploy(art('LiquidityMigrator'), [v3Factory.address, factory.address, usdc.address]);
 const vaultAddr = await read(factory, 'vault');
 const locker = await deploy(art('LiquidityLocker'), [migrator.address, vaultAddr, usdc.address]);
@@ -137,7 +146,7 @@ ok(getAddress(curveAddr) !== getAddress('0x0000000000000000000000000000000000000
 ok((await read(token, 'balanceOf', [curveAddr])) === PARAMS.totalSupply, 'entire supply minted to the curve');
 
 {
-  const owed = await pub.readContract({ address: vaultAddr, abi: art('FeeVault').abi, functionName: 'owed', args: [account.address] });
+  const owed = await pub.readContract({ address: vaultAddr, abi: art('FeeVault').abi, functionName: 'owed', args: [TREASURY] });
   ok(owed === CREATION_FEE / 10n ** 12n, 'creation fee credited to the treasury, claimable', `owed ${owed}`);
 }
 
@@ -183,6 +192,47 @@ console.log('\ncreator cap');
 // ── buy to graduation ───────────────────────────────────────────────────────
 console.log('\nbuy to graduation');
 await mine(301); // past the guard window so the per-wallet cap stops binding
+
+// ── the fee split is what docs/FEES.md says ─────────────────────────────────
+// Money, and the one thing a wrong constant would not announce: the trade still succeeds and
+// the totals still balance, it just pays the wrong party. Read from the vault, not the source.
+console.log('\nfee split');
+{
+  const vault = { address: vaultAddr, abi: art('FeeVault').abi };
+  const owed = (who) => read(vault, 'owed', [who]);
+  const REF = '0x90F79bf6EB2c4f870365E785982E1f101E93b906';       // anvil #3
+
+  const shares = async (fn) => {
+    const b = { creator: await owed(account.address), ref: await owed(REF), tre: await owed(TREASURY) };
+    await fn();
+    return {
+      creator: (await owed(account.address)) - b.creator,
+      ref: (await owed(REF)) - b.ref,
+      protocol: (await owed(TREASURY)) - b.tre,
+    };
+  };
+  const spend = parseEther('100');
+  const fee = spend / 100n / 10n ** 12n;   // 1% of the leg, in 6-dec USDC
+
+  const plain = await shares(() => buyAs(buyer, buyerAcct.address, buyerAcct.address, spend));
+  ok(plain.creator === (fee * 70n) / 100n, 'no referrer: creator takes 70%', `${plain.creator} of ${fee}`);
+  ok(plain.protocol === (fee * 30n) / 100n, 'no referrer: protocol takes 30%', `${plain.protocol} of ${fee}`);
+
+  // First touch binds the referrer permanently, so this buyer keeps it from here on.
+  const referred = await shares(async () => {
+    await send(usdc, 'mint', [curveAddr, spend / 10n ** 12n]);
+    await sendAs(buyer, curve, 'buy', [0n, buyerAcct.address, REF], spend);
+  });
+  ok(referred.creator === (fee * 60n) / 100n, 'with a referrer: creator takes 60%', `${referred.creator} of ${fee}`);
+  ok(referred.ref === (fee * 20n) / 100n, 'with a referrer: referrer takes 20%', `${referred.ref} of ${fee}`);
+  ok(referred.protocol === (fee * 20n) / 100n, 'with a referrer: protocol takes 20%', `${referred.protocol} of ${fee}`);
+
+  // The vault can only pay out what it was funded. Protocol takes the remainder in the
+  // contract, so this is what catches three shares that no longer sum to the fee.
+  ok(plain.creator + plain.protocol === fee && referred.creator + referred.ref + referred.protocol === fee,
+     'every split accounts for exactly the fee collected');
+}
+
 let spent = parseEther('40'), rounds = 0;
 while (!(await read(curve, 'graduated')) && rounds++ < 400) {
   const maxIn = await read(curve, 'maxBuyIn');
