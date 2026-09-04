@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Coin — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=29"/>
+<link rel="stylesheet" href="assets/app.css?v=30"/>
 <style>
   body main{padding:16px 18px 40px;max-width:1680px}
 
@@ -446,7 +446,7 @@
 <script src="assets/config.js?v=14"></script>
 <script src="assets/web3.bundle.js?v=16"></script>
 <script src="assets/chart.bundle.js?v=14"></script>
-<script src="assets/shell.js?v=17"></script>
+<script src="assets/shell.js?v=18"></script>
 <script>
 hexaShell.mount({ active: '' });
 
@@ -637,7 +637,7 @@ function renderStory() {
  * Fetched once rather than on the 15s refresh: the packs are committed on-chain at launch, so
  * unlike the price there is nothing here that changes while the page is open.
  */
-const GATE_LABEL = { public: 'Open', holder: 'Holders', graduated: 'At graduation' };
+const GATE_LABEL = { public: 'Open to all', holder: 'Holders', graduated: 'At graduation' };
 
 async function loadPacks() {
   let feedPacks;

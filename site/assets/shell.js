@@ -112,7 +112,10 @@
     const setAccount = (a) => {
       btn.textContent = a ? short(a) : 'Connect wallet';
       btn.title = a ? 'Account' : 'Connect a wallet';
+      // Connected, the address is a label you can open a menu from, not a call to action —
+      // so it drops the primary fill and becomes an outline.
       btn.classList.toggle('btn-p', !a);
+      btn.classList.toggle('btn-ghost', !!a);
       if (!a) pop.hidden = true;
       document.dispatchEvent(new CustomEvent('hexa:account', { detail: a }));
     };

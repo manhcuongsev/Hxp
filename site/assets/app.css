@@ -117,6 +117,11 @@ html::-webkit-scrollbar{width:0;height:0}
 .btn-p{background:linear-gradient(#f0f4fa,#ccd6e6) padding-box,var(--edge) border-box;color:#08090c;font-weight:650}
 .btn-p:hover{background:linear-gradient(#fff,#dfe8f5) padding-box,var(--edge) border-box}
 .btn-w{width:100%;justify-content:center;text-align:center;padding:10px}
+/* Outline only — the gradient edge with nothing behind it. The 5% fill in `.btn` is invisible
+   on a card but reads as a solid tinted pill on the blurred topbar, which made the address and
+   Claim look like primary actions when neither is one. */
+.btn-ghost{background:linear-gradient(rgba(255,255,255,0),rgba(255,255,255,0)) padding-box,var(--edge) border-box}
+.btn-ghost:hover{background:linear-gradient(rgba(255,255,255,.08),rgba(255,255,255,.08)) padding-box,var(--edge) border-box}
 
 /* max-width without auto margins pinned every page to the left edge on a wide screen. */
 main{padding:26px 22px 70px;max-width:1500px;margin:0 auto}

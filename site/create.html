@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Create new coin — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=29"/>
+<link rel="stylesheet" href="assets/app.css?v=30"/>
 <style>
   .layout{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start;max-width:1160px}
   @media(max-width:980px){.layout{grid-template-columns:1fr}}
@@ -328,7 +328,7 @@
 
 <script src="assets/config.js?v=14"></script>
 <script src="assets/web3.bundle.js?v=16"></script>
-<script src="assets/shell.js?v=17"></script>
+<script src="assets/shell.js?v=18"></script>
 <script>
 hexaShell.mount({ active: 'create' });
 
@@ -494,10 +494,13 @@ const MB = (b) => {
   return (Number.isInteger(m) ? m : m.toFixed(1)) + ' MB';
 };
 const PACK_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+// Phrased around what the person downloading has to do, because that is the only thing the
+// creator is actually choosing. "Anyone at all" described the audience and left the reader
+// working out what it meant next to two options that described a condition.
 const GATES = [
-  ['holder', 'Anyone holding the coin'],
-  ['public', 'Anyone at all'],
-  ['graduated', 'Everyone, once the coin graduates'],
+  ['holder', 'Holders — must own the coin'],
+  ['public', 'Everyone — no wallet needed'],
+  ['graduated', 'Everyone, but only after graduation'],
 ];
 
 let mode = 1;
