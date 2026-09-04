@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Portfolio — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=32"/>
+<link rel="stylesheet" href="assets/app.css?v=37"/>
 <style>
   .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:1px;background:var(--line);
     border-radius:14px;overflow:hidden;margin:18px 0 26px}
@@ -171,7 +171,7 @@
 <script src="assets/config.js?v=14"></script>
 <script src="assets/web3.bundle.js?v=16"></script>
 <script src="assets/swap.bundle.js?v=6"></script>
-<script src="assets/shell.js?v=18"></script>
+<script src="assets/shell.js?v=23"></script>
 <script>
 hexaShell.mount({ active: 'profile' });
 
@@ -231,7 +231,7 @@ async function loadUnified() {
 const coinCell = (r) => `<div class="tk"><span class="av">${hexaShell.art(r.token, r.image, { eager: true })}</span>
   <div><b>${r.symbol ?? '???'}</b><br><span class="pair">${r.name ?? ''}</span></div></div>`;
 const openBtn = (r) => r.curve
-  ? `<a class="btn" style="padding:4px 10px;font-size:12px" href="coin.html?token=${r.token}&curve=${r.curve}">Open</a>`
+  ? `<a class="btn btn-ghost" style="padding:4px 10px;font-size:12px" href="coin.html?token=${r.token}&curve=${r.curve}">Open</a>`
   : '';
 
 document.addEventListener('hexa:account', (e) => load(e.detail));

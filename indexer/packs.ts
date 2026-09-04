@@ -21,6 +21,7 @@ import { crc32 } from 'node:zlib';
 import { mkdirSync, writeFileSync, readFileSync, existsSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
+import { check, verifyImage } from './moderate.js';
 
 export const PACK_TYPES: Record<string, string> = {
   'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif',
@@ -35,14 +36,15 @@ export const PACK_TYPES: Record<string, string> = {
  *
  * `bytesPerAsset` is not a second budget, it is a guard — one file must not be able to eat the
  * whole allowance, and sharp has to decode whatever arrives to build the preview.
- * `assetsPerPack` is a UI bound, not a storage one.
+ * `assetsPerPack` is a sanity bound, not a storage one — a 100-image sprite set is a normal
+ * pack, and the byte budget is what actually stops it getting out of hand.
  *
  * These are mirrored in create.html. A browser check only saves the upload; this is the copy
  * that enforces.
  */
 export const LIMITS = {
   packs: 5,
-  assetsPerPack: 20,
+  assetsPerPack: 200,
   bytesPerAsset: 10 * 1024 * 1024,
   bytesPerCoin: 50 * 1024 * 1024,
   name: 60,
@@ -82,14 +84,19 @@ export function packStore(stateDir: string) {
   return {
     root,
 
-    /** Store one image. Returns the name the manifest will refer to it by. */
-    putAsset(body: Buffer, contentType: string) {
-      const ext = PACK_TYPES[contentType];
-      if (!ext) throw new Error(`unsupported type ${contentType || '(none)'}`);
+    /**
+     * Store one image. Returns the name the manifest will refer to it by.
+     *
+     * The extension comes from decoding the file, not from `content-type` — that header is
+     * whatever the client typed, and it was the only thing being checked here.
+     */
+    async putAsset(body: Buffer, contentType: string) {
+      if (!PACK_TYPES[contentType]) throw new Error(`unsupported type ${contentType || '(none)'}`);
       if (body.length === 0) throw new Error('empty body');
       if (body.length > LIMITS.bytesPerAsset) {
         throw new Error(`over ${LIMITS.bytesPerAsset / 1048576} MB`);
       }
+      const ext = await verifyImage(body, new Set(Object.values(PACK_TYPES)));
       const name = `${sha(body).slice(0, 40)}.${ext}`;
       // Content-addressed, so an identical re-upload is already on disk and rewriting it would
       // only risk truncating a file another manifest is pointing at.
@@ -104,7 +111,7 @@ export function packStore(stateDir: string) {
      * re-reading and re-hashing the file reproduces the same hash, which is what makes the
      * on-chain commitment checkable later.
      */
-    putManifest(input: unknown) {
+    async putManifest(input: unknown) {
       const raw = (input as Manifest)?.packs;
       if (!Array.isArray(raw) || raw.length === 0 || raw.length > LIMITS.packs) {
         throw new Error(`packs must be an array of 1 to ${LIMITS.packs}`);
@@ -153,6 +160,11 @@ export function packStore(stateDir: string) {
       if (total > LIMITS.bytesPerCoin) {
         throw new Error(`packs total ${(total / 1048576).toFixed(1)} MB, over the ${LIMITS.bytesPerCoin / 1048576} MB limit`);
       }
+
+      // Run at manifest time rather than per upload: this is the moment the whole set for one
+      // coin is known, it happens once, and 2.5s for a hundred images is a cost a launch can
+      // carry where a hundred separate upload requests could not.
+      await check(packs.flatMap((p) => p.assets).map((a) => readFileSync(assetPath(a))));
 
       const bytes = Buffer.from(JSON.stringify({ packs }), 'utf8');
       const hash = sha(bytes);
@@ -207,14 +219,19 @@ export function packStore(stateDir: string) {
       const cached = join(manifestDir(hash), `preview-${index}.png`);
       if (existsSync(cached)) return readFileSync(cached);
 
+      // A sample, not the whole pack. At four columns a 100-image set would composite into a
+      // 30,000px tall PNG that nobody can look at and every viewer has to download.
+      const SHOWN = 12;
+      const shown = pack.assets.slice(0, SHOWN);
+
       const W = 1200;
-      const cols = Math.min(4, pack.assets.length);
+      const cols = Math.min(4, shown.length);
       const cell = Math.floor(W / cols);
-      const rows = Math.ceil(pack.assets.length / cols);
+      const rows = Math.ceil(shown.length / cols);
       const H = cell * rows;
       const pad = Math.round(cell * 0.08);
 
-      const tiles = await Promise.all(pack.assets.map(async (a, i) => ({
+      const tiles = await Promise.all(shown.map(async (a, i) => ({
         input: await sharp(assetPath(a), { animated: false })
           .resize(cell - pad * 2, cell - pad * 2, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
           .png().toBuffer(),
@@ -222,8 +239,11 @@ export function packStore(stateDir: string) {
         top: Math.floor(i / cols) * cell + pad,
       })));
 
+      const more = pack.assets.length - shown.length;
       const mark = Buffer.from(
         `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
+           ${more > 0 ? `<text x="18" y="${H - 16}" font-family="sans-serif" font-size="19"
+                 fill="#ffffff" fill-opacity="0.5">+${more} more</text>` : ''}
            <text x="${W - 18}" y="${H - 16}" text-anchor="end" font-family="sans-serif"
                  font-size="19" fill="#ffffff" fill-opacity="0.5">hexapus.trade</text>
          </svg>`);

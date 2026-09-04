@@ -8,6 +8,7 @@ import { openStore } from './store.js';
 import { TRANSFER, FACTORY_EVENTS, CURVE_EVENTS, MIGRATOR_EVENTS, ERC20_META } from './abi.js';
 import { scoreTrending, scoreMovers, RULES } from './trending.js';
 import { packStore, PACK_TYPES, LIMITS } from './packs.js';
+import { check, verifyImage } from './moderate.js';
 import { buildWindows, buildMetrics, decorate, decodeMetadata, imageOf, isBundle, measureBlockRate, blockRate, WINDOWS, type WindowKey } from './aggregate.js';
 
 const store = openStore(config.stateDir);
@@ -800,28 +801,41 @@ app.get('/curve', async (req, res) => {
  * the operator needs IPFS or equivalent, which is a decision about who pays for pinning.
  */
 const MEDIA_DIR = join(config.stateDir, 'media');
-// Two caps, matching what a launchpad this size is expected to accept. The raw-body limit has
-// to be the larger of them, so the per-type check below is what actually enforces the image
-// cap — without it a 30 MB PNG would sail through.
+/**
+ * Images only. Video was accepted and is not any more.
+ *
+ * The content check decodes a still and classifies it; a video would have to be demuxed and
+ * sampled frame by frame, and an unclassified upload path is exactly the hole someone walks
+ * through. Rather than ship a check with a video-shaped gap in it, video is refused outright.
+ * GIF is fine — sharp decodes its first frame like any other image.
+ */
 const MEDIA_MAX_IMAGE = 15 * 1024 * 1024;
-const MEDIA_MAX_VIDEO = 30 * 1024 * 1024;
 const MEDIA_TYPES: Record<string, string> = {
-  'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp',
-  'image/gif': 'gif', 'video/mp4': 'mp4',
+  'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif',
 };
 
 mkdirSync(MEDIA_DIR, { recursive: true });
 app.use('/media', express.static(MEDIA_DIR, { maxAge: '365d', immutable: true }));
 
-app.post('/upload', express.raw({ type: () => true, limit: MEDIA_MAX_VIDEO }), (req, res) => {
+// The parser's ceiling sits above the real cap so the readable error below fires instead of a
+// bare 413 with no body.
+app.post('/upload', express.raw({ type: () => true, limit: MEDIA_MAX_IMAGE + 1048576 }), async (req, res) => {
   const type = String(req.headers['content-type'] ?? '').split(';')[0]!.trim();
   const ext = MEDIA_TYPES[type];
   if (!ext) return void res.status(415).json({ error: `unsupported type ${type || '(none)'}` });
   const body = req.body as Buffer;
   if (!Buffer.isBuffer(body) || body.length === 0) return void res.status(400).json({ error: 'empty body' });
-  const cap = type.startsWith('video/') ? MEDIA_MAX_VIDEO : MEDIA_MAX_IMAGE;
-  if (body.length > cap) {
-    return void res.status(413).json({ error: `over ${cap / 1024 / 1024} MB` });
+  if (body.length > MEDIA_MAX_IMAGE) {
+    return void res.status(413).json({ error: `over ${MEDIA_MAX_IMAGE / 1048576} MB` });
+  }
+
+  // Coin artwork is the most public image on the site — it is the thumbnail in Explore, so it
+  // gets the same check a pack asset does.
+  try {
+    await verifyImage(body, new Set(Object.values(MEDIA_TYPES)));
+    await check([body]);
+  } catch (e) {
+    return void res.status(422).json({ error: (e as Error).message });
   }
 
   // Content-addressed: the same artwork uploaded twice is stored once, and a coin's image
@@ -843,18 +857,18 @@ const packs = packStore(config.stateDir);
 // The parser's ceiling sits above the real cap on purpose. Set equal, express.raw rejects first
 // with a bare 413 and no body, and the readable "over 10 MB" below could never fire — the same
 // reason /upload gives the raw parser the video limit and checks images separately.
-app.post('/packs/asset', express.raw({ type: () => true, limit: LIMITS.bytesPerAsset + 1048576 }), (req, res) => {
+app.post('/packs/asset', express.raw({ type: () => true, limit: LIMITS.bytesPerAsset + 1048576 }), async (req, res) => {
   const type = String(req.headers['content-type'] ?? '').split(';')[0]!.trim();
   try {
-    res.json(packs.putAsset(req.body as Buffer, type));
+    res.json(await packs.putAsset(req.body as Buffer, type));
   } catch (e) {
     res.status(type && !PACK_TYPES[type] ? 415 : 400).json({ error: (e as Error).message });
   }
 });
 
-app.post('/packs/manifest', express.json({ limit: '256kb' }), (req, res) => {
+app.post('/packs/manifest', express.json({ limit: '256kb' }), async (req, res) => {
   try {
-    res.json(packs.putManifest(req.body));
+    res.json(await packs.putManifest(req.body));
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }

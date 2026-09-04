@@ -128,3 +128,45 @@ venues exist.
 That is **not** true of the swap page as a whole. Its primary job is
 any-chain USDC → Arc token via the unified balance, which is the acquisition channel and is
 valuable from day one — every user's capital starts on another chain. See [SWAP.md](SWAP.md).
+
+---
+
+## Planned: 20 / 70 / 10 with permanent referral
+
+**Decided 2026-09-04. Not shipped — blocked on Uniswap v4 reaching Arc.**
+
+| | Protocol | Creator | Referrer |
+|---|---|---|---|
+| Trade **with** a referrer | 20% | 70% | 10% |
+| Trade **without** a referrer | 25% | 75% | — |
+
+The referrer's share becomes **permanent**: it keeps paying after the coin graduates, not just
+during the launch phase.
+
+### Why it cannot ship yet
+
+Everything above §"Where referrals stop working" still holds **on Uniswap v3**. Pool fees accrue
+in aggregate to the liquidity position, with no per-trade record, so there is nothing to attribute
+a post-graduation swap to.
+
+A **Uniswap v4 hook** sees every swap individually, which is exactly the missing piece — so
+permanent referral is a v4 feature, not a v3 one that we failed to build. Checked
+2026-09-04 with `eth_getCode` against the canonical v4 PoolManager on Arc testnet: **no code**.
+Only the v3 factory this project deploys itself.
+
+### The gate
+
+Arc's public mainnet is **2026-09-16**. On that date, check whether Uniswap v4 is deployed there:
+
+```
+eth_getCode 0x000000000004444c5dc75cB358380D2e3dE08A90
+```
+
+- **v4 present** → rebuild the migrator and locker against v4 with a fee hook, move the split to
+  20/70/10, and let referral survive graduation.
+- **v4 absent** → keep v3 and either ship 20/70/10 as a launch-phase-only split, or hold the whole
+  change until v4 arrives. Shipping "permanent referral" on v3 is not an option; it would be a
+  claim the contracts cannot keep.
+
+Either way this is a **factory redeploy**: the shares are `private constant` in `HexaCurve` and
+`curveTemplate` is `immutable` with no setter, so there is no way to change them in place.

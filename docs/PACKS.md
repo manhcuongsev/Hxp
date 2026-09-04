@@ -156,12 +156,42 @@ would add an expiry scheme to protect a file that is meant to spread.
 
 ### Limits
 
-Images only. **No `.zip` uploads and no executables** — a sticker or sprite sheet is a PNG, and
-refusing everything else removes the entire malware class rather than trying to scan for it. The
-existing `MEDIA_TYPES` allowlist is the right shape; packs use a narrower version of it with the
-video type dropped.
+**The server stores images and nothing else.** A sticker or sprite sheet is a PNG, and refusing
+every other type removes the whole malware class rather than trying to scan for it.
 
-The type is verified by decoding the image, not by trusting `content-type` or the extension.
+A `.zip` of images is accepted at the **browser**, which unpacks it and uploads the images
+individually. The server's contract is unchanged and no archive ever reaches it — a malicious
+one gets as far as the uploader's own tab. That is what makes a hundred-file pack practical
+without giving the host anything new to be attacked through.
+
+The type is verified by **decoding** the file, not by trusting `content-type` or the extension.
+This was a real gap: uploads were previously stored on the strength of a header alone, so any
+bytes labelled `image/png` were written to disk.
+
+### Sexual imagery is refused
+
+Two models, because one is not enough. Measured on this repo's own 27 clean meme images:
+
+| | Per image | Highest porn score on clean art |
+|---|---|---|
+| MobileNetV2 | 78 ms | **56.8%** — a celebrity portrait |
+| InceptionV3 | 513 ms | **1.1%** — same image scores 0.3% |
+
+MobileNetV2 alone is unusable: it fires on face crops, which a meme launchpad receives
+constantly. InceptionV3 alone costs 51 s for a 100-image pack. So the cheap model **screens**
+and the accurate model **judges** — only flagged images get the second look, which put a
+27-image pack at 5.1 s end to end and means most launches never load InceptionV3 at all.
+
+Runs at manifest time, not per upload: that is the one moment the whole set for a coin is
+known. It **fails closed** — if the model cannot load, the upload is refused, because a check
+that passes when unavailable is bypassable by waiting for a CDN outage.
+
+**This is a filter, not a guarantee.** Thresholds were calibrated against 27 images. Validate
+them against real material before trusting them. It does nothing about CSAM specifically, which
+needs hash matching (PhotoDNA and similar) and a reporting path — still missing, and required
+before Bundle opens to the public.
+
+Video is not classified. Decoding frames is a separate job and this is the gap it leaves.
 
 **One budget, not three competing caps.** The creator gets a byte allowance for the whole coin
 and spends it however suits — twenty small stickers or five large sprite sheets — and the form

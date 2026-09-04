@@ -56,8 +56,10 @@
   function art(token, image, { eager = false } = {}) {
     if (!image) return face(token);
     const src = String(image).replace(/"/g, '%22');
-    // mp4 is an accepted upload, and a <video> is the only tag that plays one. Muted and
-    // inline, or a grid of cards would be a wall of sound and iOS would refuse to autoplay.
+    // mp4 is no longer an accepted upload, but this stays: a coin's metadata URI is written
+    // on-chain at reveal and is immutable, so coins launched while video was allowed still point
+    // at one. Dropping the tag would leave those permanently blank. Muted and inline, or a grid
+    // of cards would be a wall of sound and iOS would refuse to autoplay.
     //
     // Neither tag is written self-closing. Explore repaints on a timer and skips the write
     // when the new HTML equals the DOM's own serialisation of the old — and the DOM never
@@ -91,21 +93,29 @@
       <div class="side-foot">
         Arc testnet · 5042002<br/>
         <span class="dim" id="feedstat">USDC is the gas token</span>
+        <div class="legal"><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></div>
       </div>`;
+
+    // Pages that never transact — Terms, Privacy — do not load the 326 KB web3 bundle, so the
+    // wallet controls have nothing to talk to. Everything below `hexa` touches is skipped rather
+    // than left to throw: it used to take the whole inline script down with it, which is how
+    // those pages ended up with an empty table of contents.
+    const wallet = typeof hexa !== 'undefined';
 
     const top = document.createElement('header');
     top.className = 'top';
     top.innerHTML = `
       ${search ? `<div class="searchbox" id="opensearch"><span>⌕</span><span>Search for coins and addresses…</span><span class="kbd">⌘K</span></div>` : ''}
       <div class="spacer"></div>
-      <div class="acct">
+      ${wallet ? `<div class="acct">
         <button class="btn btn-p" id="connect">Connect wallet</button>
         <div class="acctpop" id="acctpop" hidden>
           <a href="profile.html">Profile</a>
           <button id="disconnect">Disconnect</button>
         </div>
-      </div>`;
+      </div>` : ''}`;
     body.prepend(top);
+    if (!wallet) return;
 
     const btn = document.getElementById('connect');
     const pop = document.getElementById('acctpop');
@@ -152,5 +162,41 @@
     hexa.resume().then((a) => a && setAccount(a)).catch(() => {});
   }
 
-  window.hexaShell = { mount, short, art };
+  /**
+   * Build a table of contents from a page's own headings, and mark the one in view.
+   *
+   * Generated rather than typed beside the sections: the legal pages carry eighteen headings
+   * each, and a hand-written list silently stops matching the first time one is renamed.
+   */
+  function toc(navSel, headSel) {
+    const nav = document.querySelector(navSel);
+    const heads = [...document.querySelectorAll(headSel)];
+    if (!nav || !heads.length) return;
+
+    for (const h of heads) {
+      const a = document.createElement('a');
+      a.href = `#${h.id}`;
+      a.textContent = h.textContent;
+      nav.appendChild(a);
+    }
+
+    /**
+     * The section being read is the last heading that has passed under the top bar.
+     *
+     * Not an IntersectionObserver band: a band tall enough to always contain a heading does not
+     * exist — sections here run from three lines to a full screen — so most of the time nothing
+     * was inside it and nothing was highlighted at all.
+     */
+    const spy = () => {
+      let active = heads[0];
+      for (const h of heads) {
+        if (h.getBoundingClientRect().top <= 90) active = h; else break;
+      }
+      for (const a of nav.children) a.classList.toggle('on', a.hash === `#${active.id}`);
+    };
+    addEventListener('scroll', spy, { passive: true });
+    spy();
+  }
+
+  window.hexaShell = { mount, short, art, toc };
 })();

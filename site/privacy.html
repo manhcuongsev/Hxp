@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Privacy Policy — Hexapus</title>
+<link rel="stylesheet" href="assets/app.css?v=37"/>
+<style>
+  .doc{display:grid;grid-template-columns:1fr 210px;gap:36px;align-items:start;max-width:1040px}
+  @media(max-width:980px){.doc{grid-template-columns:1fr}.toc{display:none}}
+  .toc{position:sticky;top:80px;display:flex;flex-direction:column;gap:1px;max-height:calc(100vh - 110px);
+    overflow-y:auto;scrollbar-width:none}
+  .toc::-webkit-scrollbar{width:0}
+  .toc a{padding:5px 10px;border-radius:8px;font-size:13px;color:var(--muted);line-height:1.4}
+  .toc a:hover{background:rgba(255,255,255,.05);color:var(--ink)}
+  .toc a.on{background:rgba(232,121,249,.12);color:#e879f9}
+  article h2{margin:30px 0 10px;scroll-margin-top:80px;font-size:18.5px;letter-spacing:-.01em}
+  article h2:first-of-type{margin-top:0}
+  article p,article li{color:var(--muted);line-height:1.72;max-width:70ch}
+  article p{margin-bottom:12px}
+  article ul{margin:0 0 12px 20px}
+  article li{margin-bottom:5px}
+  article table{width:100%;max-width:70ch;border-collapse:collapse;margin-bottom:14px;font-size:14.5px}
+  article th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:12px;
+    text-transform:uppercase;letter-spacing:.08em;color:var(--dim)}
+  article td{padding:8px 10px;text-align:left;border-bottom:1px solid rgba(255,255,255,.05);color:var(--muted)}
+  .stamp{font-size:13px;color:var(--dim);margin-bottom:22px}
+  .callout{border-left:2px solid rgba(232,121,249,.5);padding:2px 0 2px 14px;margin:16px 0}
+  .callout p{margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body"><main>
+
+<div class="doc">
+<article>
+  <h1 style="font-size:27px;letter-spacing:-.025em;margin-bottom:6px">Privacy Policy</h1>
+  <div class="stamp">Last updated 4 September 2026</div>
+
+  <h2 id="about">1. About this policy</h2>
+  <p>
+    This policy explains what information Hexapus collects, how it is used, and what happens to
+    it, when you visit hexapus.trade, connect a wallet, launch or trade a token, download an
+    asset pack, or otherwise interact with the Hexapus interface (together, the "Platform").
+  </p>
+  <p>
+    The Platform is noncustodial. Hexapus does not control your wallet, hold your private keys or
+    assets, or submit transactions for you. There are no accounts to create, and Hexapus does not
+    ask for your name, email address, or telephone number.
+  </p>
+
+  <h2 id="collect">2. Information we collect</h2>
+  <table>
+    <tr><th>Category</th><th>Examples</th></tr>
+    <tr><td>Wallet and on-chain data</td><td>Public wallet addresses, transaction hashes, token balances, trades, tokens you launched</td></tr>
+    <tr><td>Submitted content</td><td>Token names, symbols, stories, artwork, asset packs, social links</td></tr>
+    <tr><td>Communications</td><td>Anything you send when you contact us</td></tr>
+    <tr><td>Device and network data</td><td>IP address, browser type, and similar details present in ordinary server logs</td></tr>
+    <tr><td>Browser storage</td><td>Your watchlist and interface preferences, held in your own browser</td></tr>
+  </table>
+  <p>
+    Hexapus does not use analytics products, advertising pixels, session recording, or cross-site
+    trackers, and sets no tracking cookies. There is no consent banner because there is nothing
+    to consent to.
+  </p>
+  <p>
+    A wallet address is pseudonymous rather than anonymous. It may be personal information where
+    it can be associated with an identifiable person.
+  </p>
+
+  <h2 id="sources">3. Sources of information</h2>
+  <p>
+    Information reaches Hexapus from three places: the public Arc blockchain, which Hexapus
+    indexes; what you submit through the interface; and your browser, when it makes ordinary
+    requests to the server.
+  </p>
+
+  <h2 id="use">4. How we use information</h2>
+  <ul>
+    <li>To display tokens, prices, holders, trades, and portfolios.</li>
+    <li>To serve artwork and asset packs to those a token's settings permit.</li>
+    <li>To verify, in memory and without storing it, that a signature proves ownership of an
+      address before releasing a gated download.</li>
+    <li>To operate, secure, and diagnose faults in the Platform.</li>
+    <li>To respond to complaints and legal obligations.</li>
+  </ul>
+  <p>Hexapus does not sell information and does not share it for advertising.</p>
+
+  <h2 id="blockchain">5. Blockchain information</h2>
+  <div class="callout">
+    <p>
+      Public ledgers are transparent by design. Wallet addresses, transactions, token activity,
+      contract events, and token metadata are permanently readable by anyone, through Hexapus and
+      through independent explorers and indexers. <b>Hexapus cannot edit, hide, reverse, or
+      delete information recorded on a public blockchain.</b>
+    </p>
+  </div>
+  <p>
+    This includes a token's name, story, artwork reference, and asset-pack fingerprint, which are
+    written to Arc when the token is created and are immutable afterwards.
+  </p>
+
+  <h2 id="disclose">6. How we disclose information</h2>
+  <p>
+    Hexapus discloses information to service providers that host the site and its data, and where
+    required by law or to respond to a valid legal request. Anything published on-chain, or
+    submitted as public token content, is disclosed to everyone by its nature.
+  </p>
+
+  <h2 id="third">7. Third-party services</h2>
+  <p>Using the Platform means interacting with services Hexapus does not control:</p>
+  <ul>
+    <li><b>Your wallet provider</b> — its own policy applies to what it collects.</li>
+    <li><b>Arc RPC endpoints</b> — they receive your IP address and your requests.</li>
+    <li><b>Circle Gateway</b>, when moving USDC from another chain.</li>
+    <li><b>Hosting and CDN providers</b>, which process requests to serve the site.</li>
+  </ul>
+
+  <h2 id="browser">8. Browser storage</h2>
+  <p>
+    Your watchlist and a small number of interface preferences are stored by your browser and are
+    never transmitted to Hexapus. Clearing your browser data removes them.
+  </p>
+
+  <h2 id="retention">9. Retention</h2>
+  <p>
+    Server logs are kept only as long as needed to operate and secure the Platform. Submitted
+    token content is retained for as long as the token exists, which in practice is
+    indefinitely. On-chain data is retained by the network, not by Hexapus, and cannot be
+    deleted.
+  </p>
+
+  <h2 id="security">10. Security</h2>
+  <p>
+    Hexapus takes reasonable measures to protect the information it holds. No method of
+    transmission or storage is completely secure, and no guarantee of absolute security is given.
+  </p>
+
+  <h2 id="content">11. Content submitted by others</h2>
+  <p>
+    Artwork and asset packs are supplied by token creators, not by Hexapus. If material hosted
+    here contains personal information about you, write to
+    <a href="mailto:contact@hexapus.trade">contact@hexapus.trade</a>.
+  </p>
+  <p>
+    Hexapus can stop serving a file it hosts. It cannot remove that file from the blockchain, from
+    anyone who has already downloaded it, or from anywhere else it has been copied.
+  </p>
+
+  <h2 id="rights">12. Your rights and choices</h2>
+  <p>
+    Depending on where you live, you may have rights to access, correct, or delete personal
+    information held about you. Because Hexapus holds no account, no contact details, and no
+    profile, most such requests have little to act on. Where Hexapus holds something and is able
+    to act, it will.
+  </p>
+  <p>
+    Requests concerning blockchain records cannot be fulfilled. That limitation is technical and
+    applies equally to Hexapus.
+  </p>
+
+  <h2 id="international">13. International processing</h2>
+  <p>
+    The Platform is reachable worldwide, and information may be processed in countries other than
+    the one you are in, with different data protection laws.
+  </p>
+
+  <h2 id="children">14. Children</h2>
+  <p>
+    The Platform is not intended for anyone under 18, or under the age of majority where they
+    live. Hexapus does not knowingly collect information from children.
+  </p>
+
+  <h2 id="changes">15. Policy changes</h2>
+  <p>This policy may be revised. The date at the top records when it last changed.</p>
+
+  <h2 id="contact">16. Contact</h2>
+  <p><a href="mailto:contact@hexapus.trade">contact@hexapus.trade</a></p>
+</article>
+
+<nav class="toc" id="toc"></nav>
+</div>
+
+</main></div></div>
+
+<script src="assets/config.js?v=14"></script>
+<script src="assets/shell.js?v=23"></script>
+<script>
+hexaShell.mount({ active: '', search: false });
+hexaShell.toc('#toc', 'article h2[id]');
+</script>
+</body>
+</html>

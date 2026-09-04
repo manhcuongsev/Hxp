@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Terms of Use — Hexapus</title>
+<link rel="stylesheet" href="assets/app.css?v=37"/>
+<style>
+  .doc{display:grid;grid-template-columns:1fr 210px;gap:36px;align-items:start;max-width:1040px}
+  @media(max-width:980px){.doc{grid-template-columns:1fr}.toc{display:none}}
+  .toc{position:sticky;top:80px;display:flex;flex-direction:column;gap:1px;max-height:calc(100vh - 110px);
+    overflow-y:auto;scrollbar-width:none}
+  .toc::-webkit-scrollbar{width:0}
+  .toc a{padding:5px 10px;border-radius:8px;font-size:13px;color:var(--muted);line-height:1.4}
+  .toc a:hover{background:rgba(255,255,255,.05);color:var(--ink)}
+  .toc a.on{background:rgba(232,121,249,.12);color:#e879f9}
+  article h2{margin:30px 0 10px;scroll-margin-top:80px;font-size:18.5px;letter-spacing:-.01em}
+  article h2:first-of-type{margin-top:0}
+  article p,article li{color:var(--muted);line-height:1.72;max-width:70ch}
+  article p{margin-bottom:12px}
+  article ul{margin:0 0 12px 20px}
+  article li{margin-bottom:5px}
+  .stamp{font-size:13px;color:var(--dim);margin-bottom:22px}
+  .callout{border-left:2px solid rgba(232,121,249,.5);padding:2px 0 2px 14px;margin:16px 0}
+  .callout p{margin-bottom:6px}
+</style>
+</head>
+<body>
+<div class="shell"><aside id="side"></aside><div id="body"><main>
+
+<div class="doc">
+<article>
+  <h1 style="font-size:27px;letter-spacing:-.025em;margin-bottom:6px">Terms of Use</h1>
+  <div class="stamp">Last updated 4 September 2026 · Hexapus operates on <b>Arc testnet</b>.</div>
+
+  <div class="callout">
+    <p>
+      <b>The contracts are unaudited and the network is a test network.</b> No third party has
+      reviewed this code. Testnet USDC carries no monetary value. Nothing here is ready to hold
+      assets you are not willing to lose entirely.
+    </p>
+  </div>
+
+  <h2 id="agreement">1. Agreement</h2>
+  <p>
+    These Terms of Use govern your access to and use of hexapus.trade, the Hexapus interface, and
+    all related features and services (together, the "Platform"). By accessing the Platform,
+    connecting a wallet, or submitting a transaction through it, you confirm that you have read
+    and accepted these Terms and the <a href="privacy.html">Privacy Policy</a>.
+  </p>
+  <p>If you do not accept them, do not use the Platform.</p>
+
+  <h2 id="about">2. About Hexapus</h2>
+  <p>
+    Hexapus is an interface to smart contracts deployed on Arc. Those contracts let anyone create
+    a token, trade it on a bonding curve, and move it into a Uniswap pool once the curve sells
+    out. The contracts are autonomous and permissionless.
+  </p>
+  <p>
+    Hexapus does not issue, endorse, or vet any token created through it. A token appearing on
+    the Platform is a statement that it exists, not that it is worth anything.
+  </p>
+
+  <h2 id="noncustodial">3. Noncustodial interface</h2>
+  <p>
+    Hexapus is a noncustodial interface. Hexapus does not hold your assets or private keys, does
+    not sign transactions on your behalf, and cannot move, freeze, or recover funds.
+  </p>
+  <p>
+    Smart contracts and the Arc network, rather than Hexapus, determine whether and how a
+    transaction executes. Once submitted, a transaction cannot be reversed, cancelled, or amended
+    by anyone, including us.
+  </p>
+
+  <h2 id="eligibility">4. Eligibility</h2>
+  <p>By using the Platform you represent that you:</p>
+  <ul>
+    <li>are 18 or older, or older if the age of majority where you live is higher;</li>
+    <li>have the legal capacity to enter into these Terms;</li>
+    <li>are not subject to sanctions and are not resident in a sanctioned jurisdiction;</li>
+    <li>are not barred from using this software under the laws that apply to you.</li>
+  </ul>
+  <p>
+    Determining which laws apply to you is your responsibility. Hexapus does not provide legal
+    advice and does not assess your eligibility for you.
+  </p>
+
+  <h2 id="wallet">5. Wallets and security</h2>
+  <p>
+    You are solely responsible for your wallet, its private keys, and every transaction it
+    signs. Loss of a key, a compromised device, or a transaction sent to the wrong address
+    cannot be undone by Hexapus.
+  </p>
+
+  <h2 id="launches">6. Token launches and content</h2>
+  <p>
+    When you create a token you supply its name, symbol, artwork, story, and any asset packs. By
+    doing so you represent that you own that material or hold the rights to distribute it, and
+    you grant Hexapus a licence to store it and serve it to whoever the token's settings permit.
+  </p>
+  <p>You must not submit:</p>
+  <ul>
+    <li>material belonging to another person without their permission;</li>
+    <li>material that is unlawful, or sexual content involving minors;</li>
+    <li>material intended to deceive as to the identity or origin of a token.</li>
+  </ul>
+  <p>
+    <b>Submissions are effectively permanent.</b> A token's metadata, including the fingerprint
+    of its asset packs, is written to Arc at launch and cannot be edited or removed afterwards by
+    anyone. Hexapus can stop serving a file it hosts. It cannot recall copies already distributed
+    or erase the on-chain record.
+  </p>
+
+  <h2 id="trading">7. Trading and liquidity</h2>
+  <p>
+    Tokens trade on a bonding curve until the curve sells out, at which point liquidity is moved
+    into a Uniswap pool and locked permanently. The locking contract has no withdrawal function;
+    neither the creator nor Hexapus can retrieve that liquidity.
+  </p>
+  <p>
+    Prices are determined by the curve and by the pool. Hexapus does not make markets, quote
+    prices, or guarantee that any trade can be executed at a given price.
+  </p>
+
+  <h2 id="risks">8. Risk disclosures</h2>
+  <ul>
+    <li><b>Total loss.</b> Tokens created here carry no claim on any business, no revenue, and no
+      promise from anyone. Most will lose all value.</li>
+    <li><b>Unaudited code.</b> The contracts have not been independently reviewed. Defects may
+      cause permanent loss.</li>
+    <li><b>Public ordering.</b> Arc has a public mempool and first-come-first-served ordering with
+      no MEV protection. Other participants can observe and race your transaction.</li>
+    <li><b>Unvetted creators.</b> Anyone may launch a token, purchase any amount of it, and sell
+      at any time. Creator holdings are displayed; they are not restricted.</li>
+    <li><b>Availability.</b> The Platform may be unavailable at any time. The contracts would
+      continue to operate without it.</li>
+  </ul>
+
+  <h2 id="fees">9. Fees and taxes</h2>
+  <p>
+    Creating a token incurs a fee charged at reveal. Trades incur a fee on the USDC leg, divided
+    between the protocol, the token's creator, and any referrer. Current rates are published in
+    the <a href="docs.html#trading">documentation</a> and are enforced by the contracts, not by
+    this interface. Fee shares are fixed for a token at the moment it launches.
+  </p>
+  <p>
+    Network gas is separate and is paid to Arc validators, not to Hexapus. You are solely
+    responsible for identifying, reporting, and paying any taxes arising from your activity.
+  </p>
+
+  <h2 id="acceptable">10. Acceptable use</h2>
+  <p>You must not use the Platform to:</p>
+  <ul>
+    <li>impersonate a person, project, or brand you have no right to represent;</li>
+    <li>trade against yourself to fabricate volume or manipulate rankings;</li>
+    <li>attack, overload, or gain unauthorised access to the Platform or its contracts;</li>
+    <li>launder money, evade sanctions, or finance unlawful activity.</li>
+  </ul>
+
+  <h2 id="ip">11. Intellectual property and complaints</h2>
+  <p>
+    Content submitted by creators remains theirs. If material on the Platform infringes your
+    rights, write to <a href="mailto:contact@hexapus.trade">contact@hexapus.trade</a> with the
+    token address, a link to the material, evidence of your rights, and how to reach you.
+  </p>
+  <p>
+    Hexapus will remove hosted files that are the subject of a credible complaint. Hexapus cannot
+    remove the token contract, its on-chain metadata, or anything already distributed. A removed
+    pack is marked as removed rather than disappearing silently.
+  </p>
+
+  <h2 id="third">12. Third-party services</h2>
+  <p>
+    The Platform interacts with services Hexapus does not control, including your wallet
+    provider, Arc RPC endpoints, block explorers, Circle Gateway, and Uniswap. Their terms govern
+    their part, and Hexapus is not responsible for their conduct or availability.
+  </p>
+
+  <h2 id="availability">13. Service availability and access</h2>
+  <p>
+    Hexapus may modify, suspend, or discontinue any part of the Platform at any time, and may
+    restrict access where required by law or where use breaches these Terms. Restricting access
+    to the interface does not affect the contracts, which remain reachable independently.
+  </p>
+
+  <h2 id="warranty">14. No warranties</h2>
+  <p>
+    The Platform is provided <b>as is</b> and <b>as available</b>, without warranty of any kind,
+    express or implied. Hexapus does not warrant that the Platform will be uninterrupted,
+    accurate, secure, or free of defects.
+  </p>
+
+  <h2 id="liability">15. Limitation of liability</h2>
+  <p>
+    To the maximum extent permitted by law, Hexapus is not liable for any indirect, incidental,
+    special, consequential, or exemplary damages, or for any loss of funds, profits, or data
+    arising from your use of the Platform — including losses caused by a defect in the contracts,
+    an exploit, a third-party service, a network outage, or the conduct of another user.
+  </p>
+
+  <h2 id="indemnity">16. Indemnification</h2>
+  <p>
+    You agree to indemnify and hold harmless Hexapus against claims arising from your use of the
+    Platform, your breach of these Terms, or material you submitted.
+  </p>
+
+  <h2 id="changes">17. Changes to these Terms</h2>
+  <p>
+    These Terms may be revised. The date at the top records when they last changed. Continued use
+    of the Platform after a revision constitutes acceptance of it.
+  </p>
+
+  <h2 id="contact">18. Contact</h2>
+  <p><a href="mailto:contact@hexapus.trade">contact@hexapus.trade</a></p>
+</article>
+
+<nav class="toc" id="toc"></nav>
+</div>
+
+</main></div></div>
+
+<script src="assets/config.js?v=14"></script>
+<script src="assets/shell.js?v=23"></script>
+<script>
+hexaShell.mount({ active: '', search: false });
+hexaShell.toc('#toc', 'article h2[id]');
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Create new coin — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=32"/>
+<link rel="stylesheet" href="assets/app.css?v=37"/>
 <style>
   .layout{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start;max-width:1160px}
   @media(max-width:980px){.layout{grid-template-columns:1fr}}
@@ -109,20 +109,15 @@
 
   .preview{position:sticky;top:80px}
   .preview > h3{font-size:16px;font-weight:620;margin-bottom:14px}
-  .pv-card{border-radius:14px;overflow:hidden;background:var(--panel);border:1px solid var(--line)}
-  .pv-art{aspect-ratio:1/1;display:grid;place-items:center;font-size:65px;position:relative;
-    background:linear-gradient(150deg,#161a22,#0c0e13);border-bottom:1px solid var(--line);
-    background-size:cover;background-position:center}
-  .pv-body{padding:13px 14px}
-  .pv-nm{display:flex;align-items:baseline;gap:7px;margin-bottom:4px}
-  .pv-nm b{font-size:16px;font-weight:640}
-  .pv-nm span{font-size:13.5px;color:var(--dim)}
   .pv-desc{font-size:13.5px;color:var(--muted);line-height:1.5;
     display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
   .pv-links{display:flex;gap:7px;margin-top:10px}
   .pv-links a{font-size:12px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.06);
     border:1px solid rgba(255,255,255,.08);color:var(--muted)}
-  .pv-empty{padding:44px 20px;text-align:center;color:var(--dim);font-size:14px;line-height:1.6}
+  .pv-empty{padding:44px 20px;text-align:center;color:var(--dim);font-size:14px;line-height:1.6;
+    border-radius:16px;background:var(--panel);border:1px solid var(--line)}
+  .pv-empty[hidden]{display:none}
+  .pv-desc{margin-top:9px}
 
   .steps{display:flex;flex-direction:column;gap:1px;background:var(--line);border-radius:13px;overflow:hidden;margin-top:16px}
   .step{background:var(--panel);padding:13px 16px;display:flex;gap:12px;align-items:flex-start}
@@ -178,7 +173,7 @@
 
         <div class="f">
           <label for="image">Image <span>(Optional)</span></label>
-          <input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4" hidden/>
+          <input id="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden/>
           <div class="drop" id="drop" role="button" tabindex="0">
             <svg class="pic pic-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"
                  stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -199,8 +194,8 @@
               </svg>
               <h4>File size and type</h4>
               <ul>
-                <li>Image &mdash; max 15mb. '.jpg', '.gif' or '.png' recommended</li>
-                <li>Video &mdash; max 30mb. '.mp4' recommended</li>
+                <li>Image &mdash; max 15mb. '.png', '.jpg', '.webp' or '.gif'</li>
+                <li>No video. Every upload is content-checked, and video cannot be.</li>
               </ul>
             </div>
             <div>
@@ -213,7 +208,6 @@
               <h4>Resolution and aspect ratio</h4>
               <ul>
                 <li>Image &mdash; min. 1000&times;1000px, 1:1 square recommended</li>
-                <li>Video &mdash; 1:1 square or 16:9, 1080p+ recommended</li>
               </ul>
             </div>
           </div>
@@ -294,17 +288,28 @@
 
     <div class="preview">
       <h3>Preview</h3>
-      <div class="pv-card" id="pvCard">
-        <div class="pv-empty" id="pvEmpty">A preview of how the coin will look</div>
-        <div id="pvReal" hidden>
-          <div class="pv-art" id="pvArt">🐙</div>
-          <div class="pv-body">
-            <div class="pv-nm"><b id="pvSym">TICKER</b><span id="pvName">Coin name</span></div>
-            <div class="pv-desc" id="pvDesc"></div>
-            <div class="pv-links" id="pvLinks"></div>
-          </div>
+      <!-- The real Explore card, not a lookalike. A preview built from its own markup drifts
+           away from the thing it is previewing the moment either is touched — which is how it
+           ended up with square image corners the actual card does not have. -->
+      <div class="pv-empty" id="pvEmpty">A preview of how the coin will look</div>
+      <article class="coin" id="pvReal" style="cursor:default" hidden>
+        <div class="art" id="pvArt">🐙
+          <div class="flag" id="pvFlag"></div>
         </div>
-      </div>
+        <div class="body">
+          <div class="nm"><b id="pvSym">TICKER</b><span id="pvName">Coin name</span></div>
+          <div class="pv-desc" id="pvDesc"></div>
+          <div class="cstats">
+            <div class="cs"><span>MCap</span><b>$2.00K</b></div>
+            <div class="cs"><span>Price</span><b>$0.0₅2001</b></div>
+            <div class="cs"><span>Vol 24h</span><b>$0.0</b></div>
+            <div class="cs"><span>Age</span><b>new</b></div>
+          </div>
+          <div class="cbar"><i class="weld" style="width:1.5%"></i></div>
+          <div class="cbar-l"><span>Bonding curve</span><b>0.0%</b></div>
+          <div class="pv-links" id="pvLinks"></div>
+        </div>
+      </article>
 
       <div class="steps" id="steps">
         <div class="step" data-s="1"><div class="n">1</div><div>
@@ -328,7 +333,7 @@
 
 <script src="assets/config.js?v=14"></script>
 <script src="assets/web3.bundle.js?v=16"></script>
-<script src="assets/shell.js?v=18"></script>
+<script src="assets/shell.js?v=23"></script>
 <script>
 hexaShell.mount({ active: 'create' });
 
@@ -390,7 +395,9 @@ toggle.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === '
 
 // ── artwork ─────────────────────────────────────────────────────────────────
 const MAX_IMAGE = 15 * 1024 * 1024;
-const MAX_VIDEO = 30 * 1024 * 1024;
+// Images only. Video is refused because every upload is content-checked and a video cannot be —
+// see indexer/moderate.ts. GIF is an image here: only its first frame is ever decoded.
+const ARTWORK_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 let pickedFile = null;      // validated, not yet uploaded
 let uploadedUrl = null;     // set once the indexer has it
 
@@ -406,11 +413,15 @@ $('image').addEventListener('change', async () => {
   const f = $('image').files?.[0];
   if (!f) { gate(); return preview(); }
 
-  const isVideo = f.type.startsWith('video/');
-  const cap = isVideo ? MAX_VIDEO : MAX_IMAGE;
-  if (f.size > cap) {
-    note.textContent = `That ${isVideo ? 'video' : 'image'} is ${(f.size / 1024 / 1024).toFixed(1)} MB` +
-      ` — the limit is ${cap / 1024 / 1024} MB.`;
+  if (!ARTWORK_TYPES.includes(f.type)) {
+    note.textContent = f.type.startsWith('video/')
+      ? 'Video is not accepted. Use a PNG, JPG, WebP or GIF.'
+      : `${f.name} is not an image. Use a PNG, JPG, WebP or GIF.`;
+    $('image').value = ''; gate(); return preview();
+  }
+  if (f.size > MAX_IMAGE) {
+    note.textContent = `That image is ${(f.size / 1048576).toFixed(1)} MB` +
+      ` — the limit is ${MAX_IMAGE / 1048576} MB.`;
     $('image').value = ''; gate(); return preview();
   }
   pickedFile = f;
@@ -486,7 +497,7 @@ async function uploadArtwork() {
  * is the budget and the creator spends it as they like, ASSET_MAX_BYTES only stops one file
  * taking all of it. Twenty 2 MB files and ten 5 MB files both fit.
  */
-const PACK_MAX = 5, ASSETS_MAX = 20, ASSET_MAX_BYTES = 10 * 1024 * 1024, COIN_MAX_BYTES = 50 * 1024 * 1024;
+const PACK_MAX = 5, ASSETS_MAX = 200, ASSET_MAX_BYTES = 10 * 1024 * 1024, COIN_MAX_BYTES = 50 * 1024 * 1024;
 // A decimal only when there is one to show. Rounding by magnitude instead reported a rejected
 // 10.5 MB file as "11 MB", against a limit of 10 — which reads as a bug in the limit.
 const MB = (b) => {
@@ -569,10 +580,10 @@ function packCard(p, i) {
     <div class="f"><label>What is in it</label>
       <textarea class="p-desc" maxlength="300" placeholder="12 Telegram stickers, 512×512, transparent."></textarea></div>
     <div class="f">
-      <label>Files <span>(up to ${ASSETS_MAX})</span></label>
-      <input class="p-files" type="file" accept="${PACK_TYPES.join(',')}" multiple hidden/>
+      <label>Files <span>(images, or a .zip of them)</span></label>
+      <input class="p-files" type="file" accept="${[...PACK_TYPES, '.zip'].join(',')}" multiple hidden/>
       <div class="drop p-drop" role="button" tabindex="0">
-        <b>Drag images here</b><i>PNG, JPG, WebP or GIF</i>
+        <b>Drag images here</b><i>PNG, JPG, WebP or GIF — or drop a .zip of them</i>
         <span class="btn btn-p">Select files</span>
       </div>
       <div class="shots"></div>
@@ -645,11 +656,29 @@ function packCard(p, i) {
   q('.p-drop').addEventListener('drop', (e) => { e.preventDefault(); addFiles([...(e.dataTransfer?.files ?? [])]); });
   files.addEventListener('change', () => { addFiles([...files.files]); files.value = ''; });
 
-  function addFiles(list) {
+  async function addFiles(list) {
+    const note = $('packnote');
+    const flat = [];
     for (const f of list) {
-      if (p.files.length >= ASSETS_MAX) break;
+      if (!/\.zip$/i.test(f.name) && f.type !== 'application/zip' && f.type !== 'application/x-zip-compressed') {
+        flat.push(f);
+        continue;
+      }
+      note.textContent = `Reading ${f.name}…`;
+      try {
+        flat.push(...await imagesFromZip(f));
+        note.textContent = '';
+      } catch (e) {
+        note.textContent = e.message;
+      }
+    }
+
+    let full = false;
+    for (const f of flat) {
+      if (p.files.length >= ASSETS_MAX) { full = true; break; }
       if (acceptAsset(f)) p.files.push(f);
     }
+    if (full) note.textContent = `Only the first ${ASSETS_MAX} files were added — that is the limit per pack.`;
     paintShots();
     paintBudget();
     gate();
@@ -692,6 +721,77 @@ function shot(file, onRemove) {
   d.append(img, x);
   return d;
 }
+
+/**
+ * Read a .zip in the browser and hand back the images inside it.
+ *
+ * Unpacking here rather than on the server is the whole point: the indexer's contract is
+ * unchanged — it still accepts nothing but individual images — so allowing zips adds no new
+ * attack surface to the host. A malicious archive gets as far as this tab and no further.
+ *
+ * `DecompressionStream` is native, so this needs no library. Only the two methods real zip
+ * writers emit are handled: 0 (stored) and 8 (deflate).
+ */
+async function imagesFromZip(file) {
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const dv = new DataView(buf.buffer);
+
+  // The end-of-central-directory record is last, but a trailing comment can push it back up to
+  // 64 KB, so it has to be searched for rather than read at a fixed offset.
+  let eocd = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 65558); i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error(`${file.name} is not a readable zip.`);
+
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const out = [];
+
+  for (let n = 0; n < count; n++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) break;
+    const flags = dv.getUint16(p + 8, true);
+    const method = dv.getUint16(p + 10, true);
+    const compSize = dv.getUint32(p + 20, true);
+    const nameLen = dv.getUint16(p + 28, true);
+    const extraLen = dv.getUint16(p + 30, true);
+    const commentLen = dv.getUint16(p + 32, true);
+    const localAt = dv.getUint32(p + 42, true);
+    const name = new TextDecoder().decode(buf.subarray(p + 46, p + 46 + nameLen));
+    p += 46 + nameLen + extraLen + commentLen;
+
+    // Directories, macOS resource forks, and anything encrypted (flag bit 0) are skipped rather
+    // than failed on — a zip made on a Mac always carries __MACOSX entries and would otherwise
+    // reject a perfectly good pack.
+    if (name.endsWith('/') || name.startsWith('__MACOSX/') || name.split('/').pop().startsWith('.')) continue;
+    if (flags & 1) continue;
+
+    const type = MIME_OF[name.toLowerCase().split('.').pop()];
+    if (!type) continue;
+
+    // The local header repeats the name and extra fields at its own lengths, which are not
+    // always the central directory's — the data offset has to be read from the local header.
+    const lNameLen = dv.getUint16(localAt + 26, true);
+    const lExtraLen = dv.getUint16(localAt + 28, true);
+    const start = localAt + 30 + lNameLen + lExtraLen;
+    const raw = buf.subarray(start, start + compSize);
+
+    let bytes;
+    if (method === 0) bytes = raw;
+    else if (method === 8) {
+      const ds = new DecompressionStream('deflate-raw');
+      bytes = new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(ds)).arrayBuffer());
+    } else continue;
+
+    out.push(new File([bytes], name.split('/').pop(), { type }));
+  }
+  if (!out.length) throw new Error(`${file.name} holds no PNG, JPG, WebP or GIF.`);
+  return out;
+}
+
+// By extension, because a zip entry carries no content type. `.jpeg` and `.jpg` are both real.
+const MIME_OF = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg',
+                  webp: 'image/webp', gif: 'image/gif' };
 
 function acceptAsset(f) {
   const note = $('packnote');
@@ -790,18 +890,21 @@ function preview() {
   $('pvName').textContent = name || 'Coin name';
   $('pvDesc').textContent = $('desc').value.trim();
 
+  // Bundle earns the same pin here it will wear in Explore, so the choice is visible before
+  // the coin exists rather than being discovered afterwards.
+  $('pvFlag').innerHTML = mode === 2 ? '<span class="pin bundle">Bundle</span>' : '';
+
   const art = $('pvArt');
+  // The flag is a child of the artwork box, so rebuilding the box has to put it back.
+  const flag = $('pvFlag');
   art.innerHTML = ''; art.style.backgroundImage = '';
-  if (pickedFile?.type === 'video/mp4') {
-    const v = document.createElement('video');
-    v.src = URL.createObjectURL(pickedFile);
-    v.autoplay = v.loop = v.muted = v.playsInline = true;
-    v.style.cssText = 'width:100%;height:100%;object-fit:cover';
-    art.appendChild(v);
-  } else if (pickedFile) {
+  art.appendChild(flag);
+  if (pickedFile) {
     art.style.backgroundImage = `url("${URL.createObjectURL(pickedFile)}")`;
+    art.style.backgroundSize = 'cover';
+    art.style.backgroundPosition = 'center';
   } else {
-    art.textContent = '🐙';
+    art.insertBefore(document.createTextNode('🐙'), flag);
   }
 
   $('pvLinks').innerHTML = [['web', 'Website'], ['x', 'X'], ['tg', 'Telegram']]

@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Explore coins — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=32"/>
+<link rel="stylesheet" href="assets/app.css?v=37"/>
 </head>
 <body>
 <div class="shell"><aside id="side"></aside><div id="body">
@@ -76,7 +76,7 @@
 
 <script src="assets/config.js?v=14"></script>
 <script src="assets/web3.bundle.js?v=16"></script>
-<script src="assets/shell.js?v=18"></script>
+<script src="assets/shell.js?v=23"></script>
 <script>
 hexaShell.mount({ active: 'explore' });
 
@@ -215,11 +215,14 @@ function coinCard(c, extra = '') {
     `<div class="cs"><span>${label}</span><b>${value}</b></div>`;
   return `<article class="coin" data-token="${c.token}" data-curve="${c.curve ?? ''}">
     <div class="art">${hexaShell.art(c.token, c.image)}
+      <div class="flag">
+        ${c.phase === 'GRADUATED' ? '<span class="pin grad">Graduated</span>' : ''}
+        ${c.bundle ? '<span class="pin bundle">Bundle</span>' : ''}
+      </div>
       <button class="star" data-star="${c.token}" title="Watchlist"
-        style="position:absolute;top:8px;right:8px;font-size:16px;color:#fff;opacity:.8">${starred}</button></div>
+        style="position:absolute;top:8px;right:8px;font-size:16px;color:#fff;opacity:.8;z-index:1">${starred}</button></div>
     <div class="body">
-      <div class="nm"><b>${c.symbol ?? '???'}</b><span>${c.name ?? ''}</span>
-        ${c.bundle ? '<span class="tag bundle">BUNDLE</span>' : ''}</div>
+      <div class="nm"><b>${c.symbol ?? '???'}</b><span>${c.name ?? ''}</span></div>
       <div class="cstats">
         ${stat('MCap', c.mcap != null ? usd(c.mcap) : '—')}
         ${stat('Price', price6(c.lastPrice ?? 0))}
@@ -255,8 +258,7 @@ const RENDER = {
       'Nothing that ships asset packs made this window. Turn the filter off to see everything.');
     clearState();
     paint(rows.map((r) => coinCard(r, `
-      <div class="meta"><span class="tag hx">${r.phase}</span>
-        <span>vol ${usd(r.volumeUsd)} · ${r.newWallets} new</span></div>
+      <div class="meta"><span>vol ${usd(r.volumeUsd)} · ${r.newWallets} new</span></div>
       <div class="meta"><span class="dim">turnover ${r.turnover.toFixed(2)}×</span>
         ${pct(r.priceVelocity)}
         ${r.washPenalty < 0.9 ? `<span class="tag" style="color:#ff6b81;border-color:rgba(255,107,129,.4)">CONCENTRATED</span>` : ''}</div>`)).join(''));
@@ -271,8 +273,7 @@ const RENDER = {
       'Nothing that ships asset packs traded in this window. Turn the filter off to see everything.');
     clearState();
     paint(rows.map((r) => coinCard(r, `
-      <div class="meta"><span class="tag hx">${r.phase}</span>
-        <span>${r.trades} trades · liq ${usd(r.liquidityUsd)}</span></div>`)).join(''));
+      <div class="meta"><span>${r.trades} trades · liq ${usd(r.liquidityUsd)}</span></div>`)).join(''));
   },
 
   async new() {
@@ -281,8 +282,7 @@ const RENDER = {
       `Nothing has launched here yet. <a href="create.html">Create the first coin</a>.`);
     clearState();
     paint(rows.map((r) => coinCard(r, `
-      <div class="meta"><span class="tag hx">${r.phase}</span>
-        <span>by ${short(r.creator)}</span></div>`)).join(''));
+      <div class="meta"><span>by ${short(r.creator)}</span></div>`)).join(''));
   },
 
   async booster() {
@@ -303,7 +303,7 @@ const RENDER = {
        pool and locks.`);
     clearState();
     paint(rows.map((r) => coinCard(r, `
-      <div class="meta"><span class="tag v3">MIGRATED</span><span>LP locked · no withdraw path</span></div>
+      <div class="meta"><span>LP locked · no withdraw path</span></div>
       <div class="meta"><span class="dim">by ${short(r.creator)}</span></div>`)).join(''));
   },
 
@@ -375,7 +375,7 @@ const RENDER = {
       'The coins you followed are not in this indexer\'s database.');
     clearState();
     paint(rows.map((r) => coinCard(r, `
-      <div class="meta"><span class="tag hx">${r.phase}</span><span>by ${short(r.creator)}</span></div>`)).join(''));
+      <div class="meta"><span>by ${short(r.creator)}</span></div>`)).join(''));
   },
 };
 
