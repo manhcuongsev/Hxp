@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Docs — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=37"/>
+<link rel="stylesheet" href="assets/app.css?v=39"/>
 <style>
   .doc{display:grid;grid-template-columns:1fr 190px;gap:36px;align-items:start;max-width:1000px}
   @media(max-width:900px){.doc{grid-template-columns:1fr}.toc{display:none}}
@@ -12,6 +12,9 @@
   .toc a{padding:6px 10px;border-radius:8px;font-size:14px;color:var(--muted)}
   .toc a:hover{background:rgba(255,255,255,.05);color:var(--ink)}
   article h2{margin:34px 0 12px;scroll-margin-top:80px}
+  /* Room under the last section so it can actually scroll to the top. Without it the page stops
+     short and the final table-of-contents links appear to do nothing at all. */
+  article{padding-bottom:calc(100vh - 240px)}
   article h2:first-child{margin-top:0}
   article h3{font-size:16px;font-weight:600;margin:22px 0 8px}
   article p{color:var(--muted);line-height:1.72;margin-bottom:12px;max-width:70ch}
@@ -232,7 +235,7 @@ no timelock    no governance   no migration hatch</pre>
 </main></div></div>
 <script src="assets/config.js?v=14"></script>
 <script src="assets/web3.bundle.js?v=16"></script>
-<script src="assets/shell.js?v=23"></script>
+<script src="assets/shell.js?v=24"></script>
 <script>hexaShell.mount({ active: 'docs' });</script>
 </body>
 </html>

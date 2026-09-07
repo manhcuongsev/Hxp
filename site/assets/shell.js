@@ -91,7 +91,7 @@
       </nav>
       <div class="side-cta"><a class="btn btn-p btn-w" href="create.html" style="display:block">Create coin</a></div>
       <div class="side-foot">
-        Arc testnet · 5042002<br/>
+        <!-- #feedstat is not decoration: explore.html writes the measured block rate into it. -->
         <span class="dim" id="feedstat">USDC is the gas token</span>
         <div class="legal"><a href="terms.html">Terms</a> · <a href="privacy.html">Privacy</a></div>
       </div>`;

@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Privacy Policy — Hexapus</title>
-<link rel="stylesheet" href="assets/app.css?v=37"/>
+<link rel="stylesheet" href="assets/app.css?v=39"/>
 <style>
   .doc{display:grid;grid-template-columns:1fr 210px;gap:36px;align-items:start;max-width:1040px}
   @media(max-width:980px){.doc{grid-template-columns:1fr}.toc{display:none}}
@@ -15,6 +15,9 @@
   .toc a:hover{background:rgba(255,255,255,.05);color:var(--ink)}
   .toc a.on{background:rgba(232,121,249,.12);color:#e879f9}
   article h2{margin:30px 0 10px;scroll-margin-top:80px;font-size:18.5px;letter-spacing:-.01em}
+  /* Room under the last section so it can actually scroll to the top. Without it the page
+     stops short and the final few table-of-contents links appear to do nothing at all. */
+  article{padding-bottom:calc(100vh - 240px)}
   article h2:first-of-type{margin-top:0}
   article p,article li{color:var(--muted);line-height:1.72;max-width:70ch}
   article p{margin-bottom:12px}
@@ -184,7 +187,7 @@
 </main></div></div>
 
 <script src="assets/config.js?v=14"></script>
-<script src="assets/shell.js?v=23"></script>
+<script src="assets/shell.js?v=24"></script>
 <script>
 hexaShell.mount({ active: '', search: false });
 hexaShell.toc('#toc', 'article h2[id]');

@@ -239,8 +239,11 @@ module**, so a VPS deploy must run `npm ci` rather than copying `node_modules`.
 
 ## 6. Moderation and takedown
 
-Hosting images that other people download raises the same class of problem that got livestreaming
-descoped (`LIVE.md` §1). It is smaller here — images only, no live feed — but not zero:
+Hosting files that other people download is the same class of problem that got livestreaming cut
+from this project: a feature attached to a financial incentive attracts people who will post
+anything for attention, because attention moves the price. Pump.fun shipped livestreams and
+within months was dealing with self-harm threats and worse being used to pump coins. Packs are a
+smaller surface — images only, no live feed — but the same shape.
 
 - Stolen artwork, with the DMCA notice arriving at whoever hosts it
 - The same exposure that already exists for coin artwork, now at 100× the file count
