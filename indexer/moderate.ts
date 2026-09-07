@@ -39,6 +39,13 @@ import { dirname } from 'node:path';
 type Scores = Record<string, number>;
 type Model = { classify(t: unknown): Promise<{ className: string; probability: number }[]> };
 
+/**
+ * Where the classification runs. Unset means "in this process", which is what the scanner
+ * itself does and what a development machine wants.
+ */
+const SCAN_URL = (process.env.SCAN_URL ?? '').replace(/\/+$/, '');
+const SCAN_TOKEN = process.env.SCAN_TOKEN ?? '';
+
 /** Anything at or above this on the screen earns a second look from the accurate model. */
 const SCREEN = 0.15;
 
@@ -124,6 +131,43 @@ const risk = (s: Scores) => Math.max(s.porn ?? 0, s.hentai ?? 0, s.sexy ?? 0);
  * cannot load, which is the right way round for this particular decision.
  */
 export async function check(images: Buffer[]): Promise<void> {
+  if (SCAN_URL) return remote(images);
+  return local(images);
+}
+
+/**
+ * Hand the work to a separate machine when `SCAN_URL` is set.
+ *
+ * Three reasons the scanner belongs on its own box, all of them observed rather than theoretical:
+ * the models add ~330 MB to `npm ci`, which has already killed the indexer twice on deploy; the
+ * indexer is single-threaded and also serves the API, so 8 seconds of classification is 8 seconds
+ * of answering nobody; and the scanner is the one process whose whole job is opening bytes from
+ * strangers, so it should be the box with the least on it.
+ *
+ * The images are sent, not the storage: the scanner keeps nothing and is safe to rebuild from
+ * scratch at any time.
+ */
+async function remote(images: Buffer[]): Promise<void> {
+  for (const body of images) {
+    let r: Response;
+    try {
+      r = await fetch(`${SCAN_URL}/scan`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/octet-stream', 'x-scan-token': SCAN_TOKEN },
+        body: new Uint8Array(body),
+        signal: AbortSignal.timeout(30_000),
+      });
+    } catch (e) {
+      // Unreachable scanner is a refusal, never a pass — see the note on failing closed above.
+      throw new Error(`content check unavailable, upload refused: ${(e as Error).message}`);
+    }
+    if (r.status === 422) throw new Error(((await r.json()) as { error: string }).error);
+    if (!r.ok) throw new Error(`content check unavailable, upload refused: scanner returned ${r.status}`);
+  }
+}
+
+/** Classify in this process. What the scanner itself runs, and the default when none is set. */
+export async function local(images: Buffer[]): Promise<void> {
   try {
     await ready();
   } catch (e) {

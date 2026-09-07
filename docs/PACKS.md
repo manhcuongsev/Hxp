@@ -245,12 +245,43 @@ descoped (`LIVE.md` §1). It is smaller here — images only, no live feed — b
 - Stolen artwork, with the DMCA notice arriving at whoever hosts it
 - The same exposure that already exists for coin artwork, now at 100× the file count
 
-What is needed before this is public:
+### Taking something down
 
-- A takedown path that sets a pack to `removed` and keeps saying so. The manifest hash is
-  on-chain and permanent; a pack that quietly 404s makes the coin look broken, while
-  `removed after a copyright complaint` is honest and matches the hash still being there.
-- An operator route to do it in seconds, without a deploy.
+```bash
+curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H 'content-type: application/json' \
+     -d '{"manifest":"<hash>","reason":"copyright complaint"}' \
+     https://api.hexapus.trade/packs/remove
+```
+
+One request, from a phone, in seconds. A complaint about illegal material cannot wait for an SSH
+session, which is what this replaced.
+
+Removal marks the pack `removed` and keeps saying so, rather than 404ing: the manifest hash is
+on-chain and permanent, so silence would just make the coin look broken.
+
+It also **bans the files by hash**. Assets are content-addressed, so a takedown without a ban is
+half a takedown — the same bytes return under the same name the moment anyone re-uploads them.
+The list is `<stateDir>/packs/banned.txt`, one hash per line, editable over SSH. There is no undo.
+
+### What is still missing: CSAM
+
+The classifier in §Limits finds sexual imagery it has never seen. It does **not** find known
+child sexual abuse material, which is a different problem with different tooling and a legal
+obligation attached — in the US, providers must report to the NCMEC CyberTipline.
+
+That work is **perceptual hash matching against a curated list**, and the lists are deliberately
+not public. It cannot be installed; it has to be applied for:
+
+| | Cost | Note |
+|---|---|---|
+| **Microsoft PhotoDNA** | free cloud service | the industry standard, donated to NCMEC |
+| **Cloudflare CSAM Scanning Tool** | free | previously needed NCMEC credentials, i.e. a US entity — that requirement is gone |
+| **Google CSAI Match** | free | video-oriented, from YouTube's own work |
+| **Thorn Safer** | commercial | adds cross-platform hash sharing |
+
+`banned.txt` is where such a list plugs in: the upload path already refuses a hash before writing
+anything to disk. **Do this before Bundle opens to the public**, along with a reporting path —
+removing the file is not the whole obligation.
 
 ---
 

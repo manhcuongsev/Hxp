@@ -18,7 +18,7 @@
  */
 import { createHash } from 'node:crypto';
 import { crc32 } from 'node:zlib';
-import { mkdirSync, writeFileSync, readFileSync, existsSync, statSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, existsSync, statSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { check, verifyImage } from './moderate.js';
@@ -72,6 +72,33 @@ export function packStore(stateDir: string) {
   const assetPath = (file: string) => join(assets, file);
   const manifestDir = (hash: string) => join(root, hash);
 
+  /**
+   * Hashes of files a takedown has removed, one per line.
+   *
+   * A flat file rather than a table: it is append-only, it is read once per upload, and an
+   * operator has to be able to inspect and edit it over SSH at three in the morning without
+   * needing a query tool.
+   */
+  const banFile = join(root, 'banned.txt');
+  let banCache: { at: number; set: Set<string> } | null = null;
+  const banned = () => {
+    const at = existsSync(banFile) ? statSync(banFile).mtimeMs : 0;
+    if (!banCache || banCache.at !== at) {
+      banCache = {
+        at,
+        set: new Set(existsSync(banFile)
+          ? readFileSync(banFile, 'utf8').split('\n').map((l) => l.trim().split(/\s/)[0]!).filter(Boolean)
+          : []),
+      };
+    }
+    return banCache.set;
+  };
+  const ban = (digest: string) => {
+    if (banned().has(digest)) return;
+    appendFileSync(banFile, `${digest}  ${new Date().toISOString()}\n`);
+    banCache = null;
+  };
+
   /** Reject anything that could escape the assets directory before it reaches the filesystem. */
   const isAssetName = (v: unknown): v is string =>
     typeof v === 'string' && /^[0-9a-f]{40}\.(png|jpg|webp|gif)$/.test(v);
@@ -97,6 +124,8 @@ export function packStore(stateDir: string) {
         throw new Error(`over ${LIMITS.bytesPerAsset / 1048576} MB`);
       }
       const ext = await verifyImage(body, new Set(Object.values(PACK_TYPES)));
+      // Before anything touches the disk: a file taken down once must not come back.
+      if (banned().has(sha(body))) throw new Error(`this file was removed after a complaint and cannot be uploaded`);
       const name = `${sha(body).slice(0, 40)}.${ext}`;
       // Content-addressed, so an identical re-upload is already on disk and rewriting it would
       // only risk truncating a file another manifest is pointing at.
@@ -195,11 +224,28 @@ export function packStore(stateDir: string) {
       const f = join(manifestDir(hash), 'REMOVED');
       return existsSync(f) ? readFileSync(f, 'utf8').trim() || 'removed' : null;
     },
+    /**
+     * Mark a manifest removed, and ban its assets from ever being uploaded again.
+     *
+     * Removing without banning is half a takedown: assets are content-addressed, so the same
+     * bytes would sail back in under the same name the moment anyone re-uploaded them. The ban
+     * list is exact-hash, which catches the identical file and nothing else — perceptual
+     * matching against known CSAM is PhotoDNA's job and needs their approval, not more code.
+     */
     remove(hash: string, reason: string) {
       const dir = manifestDir(hash);
       if (!existsSync(dir)) throw new Error('unknown manifest');
       writeFileSync(join(dir, 'REMOVED'), reason);
+
+      const m = this.readManifest(hash);
+      for (const a of m?.packs.flatMap((p) => p.assets) ?? []) {
+        if (existsSync(assetPath(a))) ban(sha(readFileSync(assetPath(a))));
+      }
+      return { packs: m?.packs.length ?? 0, banned: m?.packs.flatMap((p) => p.assets).length ?? 0 };
     },
+
+    /** Banned by a previous takedown. Checked before anything is written to disk. */
+    isBanned: (digest: string) => banned().has(digest),
 
     /**
      * A contact sheet of one pack, generated once and cached.

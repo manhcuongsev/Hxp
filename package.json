@@ -17,7 +17,8 @@
     "site": "node scripts/build-site.mjs && python -m http.server 4477 --directory site --bind 127.0.0.1",
     "indexer": "tsx indexer/node.ts",
     "indexer:hexa": "cross-env INDEXER_ROLE=hexa tsx indexer/node.ts",
-    "indexer:network": "cross-env INDEXER_ROLE=network tsx indexer/node.ts"
+    "indexer:network": "cross-env INDEXER_ROLE=network tsx indexer/node.ts",
+    "scan": "tsx indexer/scan.ts"
   },
   "license": "MIT",
   "dependencies": {

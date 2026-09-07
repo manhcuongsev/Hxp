@@ -910,6 +910,37 @@ app.get('/packs/:token', (req, res) => {
   });
 });
 
+/**
+ * Take a pack down.
+ *
+ *   curl -X POST -H "x-admin-token: $ADMIN_TOKEN" -H 'content-type: application/json' \
+ *        -d '{"manifest":"<hash>","reason":"copyright complaint"}' \
+ *        https://api.hexapus.trade/packs/remove
+ *
+ * A complaint about illegal material has to be actionable in seconds by one person on a phone.
+ * Until now this meant an SSH session and `touch REMOVED`, which is not a takedown procedure —
+ * it is a hope that the operator is at a keyboard.
+ *
+ * Removal also bans the files: assets are content-addressed, so without it the same bytes come
+ * straight back under the same name. There is no undo on purpose.
+ */
+app.post('/packs/remove', express.json({ limit: '4kb' }), (req, res) => {
+  const token = process.env.ADMIN_TOKEN ?? '';
+  if (!token) return void res.status(503).json({ error: 'ADMIN_TOKEN is not set on this node' });
+  if (String(req.headers['x-admin-token'] ?? '') !== token) {
+    return void res.status(401).json({ error: 'bad token' });
+  }
+  const { manifest, reason } = (req.body ?? {}) as { manifest?: string; reason?: string };
+  if (typeof manifest !== 'string') return void res.status(400).json({ error: 'manifest is required' });
+  try {
+    const out = packs.remove(manifest, String(reason ?? 'removed after a complaint'));
+    log(`REMOVED manifest ${manifest} — ${reason ?? 'no reason given'} (${out.banned} files banned)`);
+    res.json({ ok: true, ...out });
+  } catch (e) {
+    res.status(404).json({ error: (e as Error).message });
+  }
+});
+
 /** Generated on first request and cached to disk — immutable, because the hash names the bytes. */
 app.get('/packs/:hash/preview/:index', async (req, res) => {
   try {
