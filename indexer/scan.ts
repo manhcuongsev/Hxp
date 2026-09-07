@@ -11,6 +11,10 @@
  * indexer classifies in-process and this file is never needed — a development machine, or a
  * deployment small enough not to care, runs exactly as before.
  */
+// The indexer picks this up through config.ts; the scanner does not import config.ts, so it has
+// to read .env itself. Under systemd `EnvironmentFile` would cover it, but that leaves the
+// manual `npm run scan` — the very first thing anyone runs — failing on a token that is there.
+import 'dotenv/config';
 import express from 'express';
 import { local, verifyImage } from './moderate.js';
 
