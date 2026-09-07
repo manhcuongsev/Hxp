@@ -354,3 +354,172 @@ với một lần launch, hoặc đặt rate limit. Trong lúc đó theo dõi du
 ```bash
 df -h / && du -sh /srv/hexapus/data/media
 ```
+
+---
+
+## 10. Máy quét nội dung (VPS thứ hai)
+
+Không bắt buộc. Bỏ trống `SCAN_URL` thì indexer tự quét như cũ — chỉ là nó phải mang theo
+~330 MB TensorFlow và mất ~8 giây CPU cho một pack 100 ảnh, trong khi vẫn phải trả lời API.
+
+Tách ra vì ba lý do, cả ba đều đã xảy ra chứ không phải lo xa: `npm ci` cài thêm 330 MB và đã
+giết indexer hai lần; indexer là Node đơn luồng nên 8 giây phân loại là 8 giây không trả lời ai;
+và máy quét là process duy nhất có việc là mở file người lạ gửi tới, nên nó nên là máy ít thứ
+để mất nhất.
+
+**Máy quét không giữ gì cả.** Không database, không đĩa, không khoá riêng. Mất nó chỉ tốn công
+dựng lại.
+
+### 10.1 Trên VPS MỚI
+
+CPX22 (2 vCPU / 4 GB) là thừa — model chiếm khoảng 1 GB.
+
+```bash
+# --- chạy với quyền root ---
+adduser --disabled-password --gecos "" hexa && usermod -aG sudo hexa \
+  && mkdir -p /home/hexa/.ssh && cp /root/.ssh/authorized_keys /home/hexa/.ssh/ \
+  && chown -R hexa:hexa /home/hexa/.ssh && chmod 700 /home/hexa/.ssh \
+  && chmod 600 /home/hexa/.ssh/authorized_keys
+echo "hexa ALL=(ALL) NOPASSWD:ALL" | tee /etc/sudoers.d/hexa && chmod 440 /etc/sudoers.d/hexa
+```
+
+Mở một phiên SSH mới bằng `ssh hexa@<IP máy mới>` và **vào được** rồi mới làm tiếp.
+
+```bash
+# --- từ đây chạy với user hexa ---
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs && node -v
+```
+
+```bash
+sudo mkdir -p /srv/hexapus && sudo chown hexa:hexa /srv/hexapus \
+  && git clone https://github.com/manhcuongsev/Hxp.git /srv/hexapus/app \
+  && cd /srv/hexapus/app && npm ci && mkdir -p node_modules/.cache
+```
+
+`npm run contracts:build` **không cần** ở đây — máy quét không đọc ABI, không nói chuyện với chain.
+
+Sinh bí mật dùng chung. Chạy **một lần**, giữ lại chuỗi này cho cả hai máy:
+
+```bash
+openssl rand -hex 32
+```
+
+```bash
+cd /srv/hexapus/app && printf 'SCAN_TOKEN=%s\n' '<chuỗi vừa sinh>' > .env && chmod 600 .env
+```
+
+Đó là toàn bộ `.env` của máy này. Không `PRIVATE_KEY`, không RPC, không gì khác — máy nhận file
+lạ thì không nên giữ khoá nào.
+
+Chạy thử trước khi dựng service:
+
+```bash
+cd /srv/hexapus/app && npm run scan
+```
+
+Thấy `hexapus scanner on :8890` là được, `Ctrl+C`.
+
+```bash
+sudo tee /etc/systemd/system/hexapus-scan.service > /dev/null <<'EOF'
+[Unit]
+Description=Hexapus content scanner
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hexa
+WorkingDirectory=/srv/hexapus/app
+EnvironmentFile=/srv/hexapus/app/.env
+ExecStart=/srv/hexapus/app/node_modules/.bin/tsx indexer/scan.ts
+Restart=always
+RestartSec=5
+ProtectSystem=strict
+# Máy này không ghi dữ liệu gì. Chỉ cache của tsx, và dấu `-` để `npm ci` xoá nó
+# không làm service chết với 226/NAMESPACE.
+ReadWritePaths=-/srv/hexapus/app/node_modules/.cache
+PrivateTmp=true
+NoNewPrivileges=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+sudo systemctl daemon-reload && sudo systemctl enable --now hexapus-scan \
+  && sleep 8 && curl -s localhost:8890/health
+```
+
+Phải thấy `{"role":"scan","ok":true}`.
+
+**Tường lửa — làm ngay, đừng để sau.** Fail-closed nghĩa là máy quét ngừng thì toàn site không
+tạo được coin; ai bơm ảnh vào cổng này cũng đủ làm sập nó.
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow from <IP của máy indexer> to any port 8890 proto tcp
+sudo ufw --force enable && sudo ufw status
+```
+
+Nếu hai máy cùng vùng, Hetzner cho tạo Private Network miễn phí — dùng IP private thì lưu lượng
+không ra internet và không cần TLS. Không có thì dùng IP public, tường lửa ở trên vẫn là thứ chặn.
+
+### 10.2 Trên VPS CŨ (indexer)
+
+```bash
+cd /srv/hexapus/app && git pull && npm ci && mkdir -p node_modules/.cache && npm run contracts:build
+```
+
+Thêm ba dòng vào `.env` — `SCAN_TOKEN` phải **giống hệt** máy kia:
+
+```bash
+cd /srv/hexapus/app && cat >> .env <<'EOF'
+SCAN_URL=http://<IP máy quét>:8890
+SCAN_TOKEN=<đúng chuỗi đã sinh>
+ADMIN_TOKEN=
+EOF
+```
+
+`ADMIN_TOKEN` bật route gỡ nội dung. Sinh riêng một chuỗi khác:
+
+```bash
+openssl rand -hex 32
+```
+
+Điền vào rồi khởi động lại:
+
+```bash
+sudo systemctl restart hexapus-indexer && sleep 20 && curl -s localhost:8880/health
+```
+
+### 10.3 Kiểm tra thật
+
+Từ máy indexer, upload một ảnh và xem nó có đi qua máy quét không:
+
+```bash
+curl -s -X POST -H 'content-type: image/png' --data-binary @/srv/hexapus/app/site/assets/memes/74.png \
+  http://localhost:8880/upload
+```
+
+Trả `{"url":"/media/…"}` là đường dẫn đã thông.
+
+Rồi thử chặn: tắt máy quét và upload lại.
+
+```bash
+# trên máy quét
+sudo systemctl stop hexapus-scan
+```
+
+```bash
+# trên máy indexer — phải bị TỪ CHỐI, không được cho qua
+curl -s -X POST -H 'content-type: image/png' --data-binary @/srv/hexapus/app/site/assets/memes/74.png \
+  http://localhost:8880/upload
+```
+
+Phải ra `{"error":"content check unavailable, upload refused: …"}`. Nếu nó vẫn trả `url` thì
+fail-closed đã hỏng và cần dừng lại tìm nguyên nhân.
+
+```bash
+# bật lại
+sudo systemctl start hexapus-scan
+```
