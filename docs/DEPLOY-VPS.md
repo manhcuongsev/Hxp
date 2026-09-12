@@ -161,9 +161,6 @@ RECONCILE_MS=30000
 
 HEXA_FACTORY_ADDRESS=0xcafdb22d2452a354825661d03c9df830f545ecdc
 
-# Testnet có rất ít giao dịch; để mặc định thì Trending sẽ luôn rỗng.
-MIN_LIQUIDITY_USD=1
-MIN_TRADES=2
 
 # Để TRỐNG. Indexer không bao giờ cần khoá riêng — máy này mở ra internet,
 # khoá deployer không được đặt ở đây.

@@ -120,11 +120,6 @@ export function openStore(stateDir: string) {
       INSERT INTO referrals(token,trader,referrer,block) VALUES(?,?,?,?)
       ON CONFLICT(token,trader) DO NOTHING`),
     curveToken: db.prepare('SELECT token FROM launches WHERE lower(curve) = lower(?)'),
-    // A "boost" is a buy by someone who arrived through a referral link. Joining trades to
-    // referrals is what distinguishes it from an ordinary buy — there is no separate event.
-    tradesSince: db.prepare(
-      'SELECT token, side, trader, native_amt, token_amt, block FROM trades WHERE block >= ? ORDER BY block ASC, log_index ASC',
-    ),
     allTrades: db.prepare(
       'SELECT token, side, trader, native_amt, token_amt, block FROM trades ORDER BY block ASC, log_index ASC',
     ),
@@ -134,8 +129,9 @@ export function openStore(stateDir: string) {
       `SELECT tx, token, side, trader, native_amt, token_amt, block FROM trades
        WHERE lower(token) = lower(?) ORDER BY block ASC, log_index ASC`,
     ),
-    firstTouch: db.prepare('SELECT token, trader, MIN(block) AS first_block FROM trades GROUP BY token, lower(trader)'),
     launchMeta: db.prepare('SELECT token, curve, symbol, name, creator, phase, reveal_block, metadata_uri FROM launches WHERE token IS NOT NULL'),
+    // A "boost" is a buy by someone who arrived through a referral link. Joining trades to
+    // referrals is what distinguishes it from an ordinary buy — there is no separate event.
     booster: db.prepare(`
       SELECT t.token, t.trader AS buyer, r.referrer, t.native_amt, t.block, t.tx,
              l.symbol, l.name, l.curve
@@ -176,10 +172,8 @@ export function openStore(stateDir: string) {
     tokenOfCurve: (curve: string) =>
       (q.curveToken.get(curve) as { token: string } | undefined)?.token ?? null,
     booster: (limit: number) => q.booster.all(limit) as Record<string, unknown>[],
-    tradesSince: (block: number) => q.tradesSince.all(block) as TradeRow[],
     allTrades: () => q.allTrades.all() as TradeRow[],
     tradesOfToken: (token: string) => q.tradesOfToken.all(token) as (TradeRow & { tx: string })[],
-    firstTouch: () => q.firstTouch.all() as { token: string; trader: string; first_block: number }[],
     launchMeta: () => q.launchMeta.all() as LaunchMetaRow[],
   };
 }

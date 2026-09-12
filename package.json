@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test indexer/trending.test.ts",
     "test:integration": "node contracts/compile.mjs && node test/integration.mjs",
     "contracts:build": "node contracts/compile.mjs",
     "contracts:sim": "node contracts/sim.mjs",

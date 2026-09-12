@@ -1,13 +1,12 @@
 import { client } from './config.js';
 import type { Store, TradeRow } from './store.js';
-import { capWalletVolume, type TokenWindow } from './trending.js';
 
 /**
- * Turns raw trades into the per-token windows the Trending and Movers tabs rank on.
+ * Per-token metrics from raw trades, plus the block-rate measurement the time windows depend on.
  *
- * The awkward part is that trades are stored by block number while the tabs filter by time.
- * Arc's block rate is not a constant anyone should hardcode, so it is measured from the
- * chain and refreshed periodically — two RPC calls, not a guess.
+ * Trades are stored by block number while the site asks in time. Arc's block rate is not a
+ * constant anyone should hardcode, so it is measured from the chain and refreshed
+ * periodically — two RPC calls, not a guess.
  */
 
 const E18 = 10n ** 18n;
@@ -40,12 +39,6 @@ export const blockRate = () => ({ blocksPerSecond, measuredAt });
 export const WINDOWS = { '5m': 300, '1h': 3_600, '6h': 21_600, '24h': 86_400, all: 0 } as const;
 export type WindowKey = keyof typeof WINDOWS;
 
-/** How many blocks back a window reaches. `all` reaches to the beginning. */
-export function windowBlocks(w: WindowKey): number {
-  const seconds = WINDOWS[w] ?? 3_600;
-  return seconds === 0 ? 0 : Math.ceil(seconds * blocksPerSecond);
-}
-
 /**
  * Price of one whole token in USDC, from a single trade. Both legs are 18-decimal, so the
  * ratio is already the price — no decimal juggling.
@@ -55,65 +48,6 @@ const tradePrice = (t: TradeRow) => {
   if (tokens === 0n) return 0;
   return Number((BigInt(t.native_amt) * E18) / tokens) / 1e18;
 };
-
-export function buildWindows(store: Store, w: WindowKey, head: bigint): TokenWindow[] {
-  const back = windowBlocks(w);
-  const from = back === 0 ? 0 : Math.max(0, Number(head) - back);
-  const inWindow = back === 0 ? store.allTrades() : store.tradesSince(from);
-  if (inWindow.length === 0) return [];
-
-  // Liquidity is the curve's net intake over all time, not just this window — a token's
-  // depth does not reset because the clock did.
-  const netByToken = new Map<string, bigint>();
-  for (const t of store.allTrades()) {
-    const v = BigInt(t.native_amt);
-    netByToken.set(t.token, (netByToken.get(t.token) ?? 0n) + (t.side === 'buy' ? v : -v));
-  }
-
-  // A wallet counts as new to a token only if its first-ever trade there is inside the
-  // window. Anything looser would count returning holders as fresh interest.
-  const firstTouch = new Map<string, number>();
-  for (const r of store.firstTouch()) firstTouch.set(`${r.token}|${r.trader.toLowerCase()}`, r.first_block);
-
-  const meta = new Map(store.launchMeta().map((m) => [m.token, m]));
-
-  type Acc = { perWallet: Map<string, bigint>; trades: TradeRow[] };
-  const byToken = new Map<string, Acc>();
-  for (const t of inWindow) {
-    let acc = byToken.get(t.token);
-    if (!acc) byToken.set(t.token, (acc = { perWallet: new Map(), trades: [] }));
-    acc.trades.push(t);
-    const k = t.trader.toLowerCase();
-    acc.perWallet.set(k, (acc.perWallet.get(k) ?? 0n) + BigInt(t.native_amt));
-  }
-
-  const out: TokenWindow[] = [];
-  for (const [token, acc] of byToken) {
-    const perWallet = [...acc.perWallet.values()].map((v) => Number(v / 10n ** 12n) / 1e6);
-    const { volumeUsd, topWalletShare } = capWalletVolume(perWallet);
-
-    let newWallets = 0;
-    for (const trader of acc.perWallet.keys()) {
-      const first = firstTouch.get(`${token}|${trader}`);
-      // Trades under $10 do not buy a wallet a place in the count; sybils should cost money.
-      if (first !== undefined && first >= from && (acc.perWallet.get(trader) ?? 0n) >= 10n * E18) newWallets++;
-    }
-
-    const m = meta.get(token);
-    out.push({
-      token,
-      symbol: m?.symbol ?? token.slice(0, 8),
-      volumeUsd,
-      topWalletShare,
-      newWallets,
-      priceStart: tradePrice(acc.trades[0]!),
-      priceEnd: tradePrice(acc.trades[acc.trades.length - 1]!),
-      liquidityUsd: Math.max(0, Number((netByToken.get(token) ?? 0n) / 10n ** 12n) / 1e6),
-      trades: acc.trades.length,
-    });
-  }
-  return out;
-}
 
 /**
  * Coin metadata, as written by the creator into a base64 data URI at reveal.
@@ -247,21 +181,3 @@ export function buildMetrics(store: Store, head: bigint): Metrics[] {
   return out.sort((x, y) => y.mcap - x.mcap);
 }
 
-/** Extra fields the UI wants that the scoring model has no opinion about. */
-export function decorate(store: Store, rows: { token: string }[]) {
-  const meta = new Map(store.launchMeta().map((m) => [m.token, m]));
-  return rows.map((r) => {
-    const m = meta.get(r.token);
-    return {
-      ...r,
-      name: m?.name ?? null,
-      curve: m?.curve ?? null,
-      phase: m?.phase ?? 'UNKNOWN',
-      creator: m?.creator ?? null,
-      image: imageOf(m?.metadata_uri),
-      bundle: isBundle(m?.metadata_uri),
-      revealBlock: m?.reveal_block ?? null,
-      explorer: `https://testnet.arcscan.app/address/${r.token}`,
-    };
-  });
-}

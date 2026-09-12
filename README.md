@@ -41,7 +41,7 @@ docs/CURVE.md             curve parameters, and how pump.fun / Virtuals / NOXA s
 docs/FEES.md              1% fee, 40/40/20 split, single-tier referrals
 docs/SWAP.md              unified balance, bridge-in, batching
 contracts/                Solidity — compiles clean, unaudited, never run on Arc
-indexer/                  Arc indexer (viem + sqlite + express) + trending algorithm
+indexer/                  Arc indexer (viem + sqlite + express)
 site/                     Home + Explore, animated logo
 test/integration.mjs      end-to-end against anvil + real Uniswap v3-core
 ```
@@ -49,7 +49,7 @@ test/integration.mjs      end-to-end against anvil + real Uniswap v3-core
 ## Verify
 
 ```bash
-npm run typecheck && npm test        # trending algorithm, 7 tests
+npm run typecheck
 npm run contracts:build              # solc 0.8.28, 0 warnings
 npm run contracts:sim                # curve + migration math
 anvil --port 8545 --silent &         # then:

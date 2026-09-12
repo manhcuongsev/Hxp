@@ -6,10 +6,9 @@ import { getAddress, recoverMessageAddress, type Address, type Log } from 'viem'
 import { client, wsClient, config, ARC_CHAIN_ID, loadDeployment, factoryMismatch } from './config.js';
 import { openStore } from './store.js';
 import { TRANSFER, FACTORY_EVENTS, CURVE_EVENTS, MIGRATOR_EVENTS, ERC20_META } from './abi.js';
-import { scoreTrending, scoreMovers, RULES } from './trending.js';
 import { packStore, PACK_TYPES, LIMITS } from './packs.js';
 import { check, verifyImage } from './moderate.js';
-import { buildWindows, buildMetrics, decorate, decodeMetadata, imageOf, isBundle, measureBlockRate, blockRate, WINDOWS, type WindowKey } from './aggregate.js';
+import { buildMetrics, decodeMetadata, imageOf, isBundle, measureBlockRate, blockRate, WINDOWS, type WindowKey } from './aggregate.js';
 
 const store = openStore(config.stateDir);
 const log = (...a: unknown[]) => console.log(new Date().toISOString().slice(11, 19), ...a);
@@ -1026,32 +1025,6 @@ app.post('/packs/:token/download', express.json({ limit: '8kb' }), async (req, r
 
 const parseWindow = (q: unknown): WindowKey =>
   typeof q === 'string' && q in WINDOWS ? (q as WindowKey) : '1h';
-
-/** Explore -> Trending: turnover, fresh wallets and price velocity, z-scored per window. */
-app.get('/trending', async (req, res) => {
-  const w = parseWindow(req.query.window);
-  const head = await client.getBlockNumber();
-  const scored = scoreTrending(buildWindows(store, w, head));
-  // Report what was filtered out and why. An unexplained empty list is indistinguishable
-  // from a broken feed, and on a young chain the gates exclude almost everything.
-  const excluded = scored
-    .filter((r) => r.gated)
-    .map((r) => ({ token: r.token, symbol: r.symbol, reason: r.gated, liquidityUsd: r.liquidityUsd, trades: r.trades }));
-  res.json({
-    window: w,
-    ...blockRate(),
-    thresholds: { minLiquidityUsd: RULES.MIN_LIQUIDITY_USD, minTrades: RULES.MIN_TRADES },
-    excluded,
-    rows: decorate(store, scored.filter((r) => !r.gated)).slice(0, 60),
-  });
-});
-
-/** Explore -> Movers: deliberately the dumb one, raw traded volume only. */
-app.get('/movers', async (req, res) => {
-  const w = parseWindow(req.query.window);
-  const head = await client.getBlockNumber();
-  res.json({ window: w, ...blockRate(), rows: decorate(store, scoreMovers(buildWindows(store, w, head))).slice(0, 60) });
-});
 
 /** Explore -> Booster: buys made by someone who arrived through a referral link. */
 app.get('/booster', (req, res) => {
