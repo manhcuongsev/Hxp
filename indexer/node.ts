@@ -528,7 +528,8 @@ app.get('/metrics', async (_req, res) => {
     } catch { /* keep the trade-derived figures */ }
   }));
 
-  res.json({ ...blockRate(), rows });
+  // `head` rides along so a caller can turn firstBlock into an age without a second request.
+  res.json({ ...blockRate(), head: Number(head), rows });
 });
 
 // The artwork URL is decoded here rather than in the browser: it is the one field every card

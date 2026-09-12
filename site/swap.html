@@ -210,6 +210,8 @@
   .tokrow .who span{display:block;font:400 12px var(--mono);color:var(--dim);
     overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tokempty{padding:22px 18px;font-size:13.5px;color:var(--dim);line-height:1.6}
+  .tokmeta{flex:0 0 auto;text-align:right;font:600 12.5px var(--num);color:var(--ink);line-height:1.35}
+  .tokmeta i{display:block;font-style:normal;font-weight:400;color:var(--dim)}
 
   /* The badge is the whole point of showing an unknown token at all, so it is loud: amber
      triangle, red bang, and a sentence that names the risk rather than hinting at it. */
@@ -563,20 +565,46 @@ function pollPending() {
 
 const isAddr = (v) => /^0x[0-9a-fA-F]{40}$/.test(v.trim());
 
+/**
+ * Launches, with market cap and age folded in from /metrics. A picker row that only says the
+ * name gives nothing to choose on; the two figures are what separate a live coin from a dead one.
+ */
 async function loadListed() {
   try {
-    listed = await (await fetch(`${HEXA_API}/launches?limit=200`, { cache: 'no-store' })).json();
+    const [rows, m] = await Promise.all([
+      (await fetch(`${HEXA_API}/launches?limit=200`, { cache: 'no-store' })).json(),
+      (await fetch(`${HEXA_API}/metrics`, { cache: 'no-store' })).json().catch(() => null),
+    ]);
+    const by = new Map((m?.rows ?? []).map((r) => [r.token, r]));
+    const head = Number(m?.head ?? 0), bps = m?.blocksPerSecond || 2;
+    const age = (block) => {
+      if (!block || !head) return null;
+      const s = Math.max(0, (head - block) / bps);
+      return s < 3600 ? Math.round(s / 60) + 'm' : s < 86400 ? Math.round(s / 3600) + 'h'
+           : s < 2592000 ? Math.round(s / 86400) + 'd' : Math.round(s / 2592000) + 'mo';
+    };
+    listed = rows.map((r) => {
+      const x = by.get(r.token);
+      return { ...r, mcap: x?.mcap ?? null, ageLabel: age(x?.firstBlock ?? r.reveal_block) };
+    });
   } catch { listed = []; }
 }
+
+const mcapFmt = (n) => n >= 1e6 ? '$' + (n / 1e6).toFixed(2) + 'M'
+                     : n >= 1e3 ? '$' + (n / 1e3).toFixed(2) + 'K'
+                     : n > 0 ? '$' + n.toFixed(0) : '—';
 
 const rowHtml = (t) => `<button class="tokrow" data-addr="${t.address}">
   <span class="av">${hexaShell.art(t.address, t.image, { eager: true })}</span>
   <span class="who"><b>${t.symbol ?? '???'}</b><span>${t.name ?? ''} · ${short(t.address)}</span></span>
-  ${t.hexapus ? '' : `<span class="warnpill">${WARN_ICON}Unverified</span>`}</button>`;
+  ${t.hexapus
+    ? `<span class="tokmeta">${t.mcap != null ? mcapFmt(t.mcap) + ' MC' : '—'}<i>${t.ageLabel ?? '—'}</i></span>`
+    : `<span class="warnpill">${WARN_ICON}Unverified</span>`}</button>`;
 
 const fromLaunch = (r) => ({
   address: r.token, symbol: r.symbol, name: r.name,
   image: r.image, curve: r.curve, hexapus: true,
+  mcap: r.mcap ?? null, ageLabel: r.ageLabel ?? null,
 });
 
 /**

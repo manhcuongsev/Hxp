@@ -165,11 +165,13 @@ export const isBundle = (uri: string | null | undefined) => !!decodeMetadata(uri
 
 export type Metrics = {
   token: string; symbol: string | null; name: string | null; curve: string | null; phase: string;
-  image: string | null; bundle: boolean;
+  image: string | null; bundle: boolean; creator: string | null;
   lastPrice: number; athPrice: number; mcap: number; ath: number;
   vol24h: number; traders24h: number; txns: number;
   change1h: number | null; change6h: number | null; change24h: number | null;
   firstBlock: number;
+  /** Block of the most recent trade — what "recent buys" orders by. */
+  lastBlock: number;
   // Filled in by /metrics from the curve's live reserves; absent if that read failed.
   liquidityUsd?: number; curvePct?: number; graduated?: boolean;
 };
@@ -232,13 +234,14 @@ export function buildMetrics(store: Store, head: bigint): Metrics[] {
     out.push({
       token, symbol: m?.symbol ?? null, name: m?.name ?? null, curve: m?.curve ?? null,
       phase: m?.phase ?? 'UNKNOWN', image: imageOf(m?.metadata_uri),
-      bundle: isBundle(m?.metadata_uri),
+      bundle: isBundle(m?.metadata_uri), creator: m?.creator ?? null,
       lastPrice: last, athPrice: ath, mcap: last * supply, ath: ath * supply,
       vol24h: a.vol24h, traders24h: a.traders24h.size, txns: a.txns,
       change1h: change(last, priceAt(a, b1h)),
       change6h: change(last, priceAt(a, b6h)),
       change24h: change(last, priceAt(a, b24h)),
       firstBlock: a.prices[0]!.block,
+      lastBlock: a.prices[a.prices.length - 1]!.block,
     });
   }
   return out.sort((x, y) => y.mcap - x.mcap);

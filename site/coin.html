@@ -123,7 +123,9 @@
 
   /* ── stats ──────────────────────────────────────────── */
   .stat{display:flex;justify-content:space-between;align-items:baseline;font-size:13.5px;margin-bottom:4px}
-  .stat span{color:var(--dim)}
+  /* The label only. The value's own span carries .up/.down, and this rule was outranking
+     both — a price change of +1.9% rendered in the label's grey. */
+  .stat > span{color:var(--dim)}
   .stat b{font:600 14px var(--num)}
   .split{height:5px;border-radius:99px;overflow:hidden;display:flex;margin:3px 0 13px;background:rgba(255,255,255,.06)}
   .split i{display:block;height:100%}
@@ -986,12 +988,13 @@ function renderHolders() {
     // Realised proceeds count: a wallet that sold at a profit is up even if what it still
     // holds is worth less than the whole cost basis.
     const pnl = value + h.realised - h.invested;
-    const flat = Math.abs(pnl) < 5e-5;
+    // Below what two decimals can show. Anything smaller would print as a coloured "+$0.00".
+    const flat = Math.abs(pnl) < 0.005;
     return `<tr>
       <td><a class="who" href="https://testnet.arcscan.app/address/${h.addr}" target="_blank"
              rel="noopener">${short(h.addr)}</a>${h.addr === creator ? '<span class="badge">Creator</span>' : ''}</td>
       <td>${usd(value)}</td>
-      <td class="${flat ? 'dim' : pnl > 0 ? 'up' : 'down'}">${flat ? '$0.00' : (pnl > 0 ? '+' : '−') + usd(Math.abs(pnl))}</td>
+      <td class="${flat ? 'dim' : pnl > 0 ? 'up' : 'down'}">${flat ? '$0.00' : (pnl > 0 ? '+' : '−') + '$' + Math.abs(pnl).toFixed(2)}</td>
       <td>${((h.tokens / supply) * 100).toFixed(2)}%</td></tr>`;
   }).join('');
 }

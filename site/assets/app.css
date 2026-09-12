@@ -177,12 +177,6 @@ h2{font-size:22.5px;letter-spacing:-.02em;font-weight:640}
 .tabs button[aria-selected=true]{background:rgba(255,255,255,.085);color:var(--ink);border-color:var(--line)}
 
 .subbar{display:flex;align-items:center;gap:10px;margin:12px 0 18px;flex-wrap:wrap}
-.onlybundle{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:9px;
-  font-size:12.5px;color:var(--muted);background:rgba(255,255,255,.04);border:1px solid var(--line)}
-.onlybundle:hover{color:var(--ink)}
-.onlybundle[aria-pressed=true]{color:var(--ink);border-color:rgba(95,227,161,.45);
-  background:rgba(95,227,161,.1)}
-.onlybundle[hidden]{display:none}
 .seg{display:flex;gap:1px;background:var(--line);border-radius:9px;overflow:hidden;border:1px solid var(--line)}
 .seg button{padding:5px 11px;font:600 13px var(--num);color:var(--dim);background:var(--bg)}
 .seg button[aria-selected=true]{background:rgba(255,255,255,.09);color:var(--ink)}
