@@ -79,9 +79,9 @@ reveal   →  deploys the token and curve, opens trading,
 
     <h2 id="antisnipe">Anti-snipe protection</h2>
     <p>
-      Arc has a public mempool and first-come-first-served ordering, with no MEV protection.
-      A bot can see transactions and race them. Hexapus does not pretend otherwise — it
-      attacks the two halves of the problem separately.
+      Arc has a public mempool and first-come-first-served ordering. Hexapus is designed for
+      exactly that: a bot can see a transaction and race it, so the launch is built to make
+      racing worthless — before the reveal by hiding the target, after it by taxing the flip.
     </p>
 
     <h3>Before the launch: commit–reveal</h3>
@@ -92,9 +92,10 @@ reveal   →  deploys the token and curve, opens trading,
     </p>
     <div class="callout">
       <p>
-        <b>What this does not do:</b> once the reveal is in the mempool, everything is public.
-        A bot that indiscriminately buys every reveal still gets in early. Commit–reveal does
-        not stop a bot from being fast — it stops speed from being worth anything in advance.
+        Once the reveal is in the mempool, everything is public, and a bot that buys every
+        reveal blind still gets in first. That is fine. Commit–reveal is not trying to outrun
+        bots — it makes speed worth nothing before the launch, and the sell tax below makes it
+        worth nothing after.
       </p>
     </div>
 
@@ -113,13 +114,14 @@ reveal   →  deploys the token and curve, opens trading,
 
     <h3>No per-wallet cap</h3>
     <p>
-      There is no limit on how much one wallet may buy, at any point. A cap was tried and
-      dropped: wallets are free and no chain gives us sybil resistance, so splitting a purchase
-      across ten addresses defeats it completely while costing the buyer nothing. All it did was
-      inconvenience the honest and rename the dishonest.
+      Anyone may buy any amount, at any point. Hexapus does not cap wallets because a wallet
+      cap is theatre: addresses cost nothing, so one buyer becomes ten and the cap is gone,
+      while the honest buyer is the only one it ever slowed.
     </p>
     <p>
-      The sell tax is the part that cannot be split around, so it is the part that is kept.
+      The constraint sits where it cannot be split — on the sell. A large opening buy dumped
+      in the first minute hands most of itself to the curve, and that stays with everyone who
+      held.
     </p>
 
     <h2 id="trading">Trading &amp; fees</h2>
@@ -150,12 +152,11 @@ reveal   →  deploys the token and curve, opens trading,
       Every coin page shows "creator holds N%" whether the creator likes it or not.
     </p>
     <p>
-      A cap was tried and dropped, because it protects less than it looks like it does: nothing
-      stops a creator buying from a second wallet, where the same purchase is invisible. What
-      actually constrains the behaviour is the <b>sell tax</b>, which applies to the creator
-      exactly as it does to anyone else — a large opening buy dumped in the first minutes gives
-      up most of itself to the curve, and that tax stays with the remaining holders. Disclosure
-      plus a cost to dumping beats a limit that a second address defeats.
+      There is no creator cap, and there is no need for one: a creator buying from a second
+      wallet is invisible to any cap. What holds a creator to the same rules as everyone else is
+      the <b>sell tax</b>, which applies to them exactly as it does to anyone, and the
+      disclosure — every coin page shows what the creator holds. A cost to dumping plus a public
+      number beats a limit that a second address walks around.
     </p>
     <h3>Referrals</h3>
     <p>
@@ -166,11 +167,12 @@ reveal   →  deploys the token and curve, opens trading,
     </p>
     <div class="callout">
       <p>
-        <b>Referrals apply to the launch phase.</b> After graduation, fees come from the pool's
-        own fee tier and accrue in aggregate — there is no per-trade record to attribute, so
-        the split becomes 70% creator and 30% protocol. Any launchpad promising lifetime referral
-        revenue on an open AMM pool is either routing everything through a bypassable router,
-        or being imprecise.
+        <b>Referral shares are paid on curve trades.</b> After graduation the coin trades in a
+        Uniswap v3 pool, where fees accrue to the position in aggregate with no per-trade record
+        to attribute, so the pool's fees split 70% creator and 30% protocol. Attributing a swap
+        to a referrer after graduation needs the pool itself to observe every trade — which is
+        what Uniswap v4 hooks provide. That is the path to referrals that outlive the curve, and
+        it is a pool-level feature, not a router that anyone can route around.
       </p>
     </div>
 
@@ -199,24 +201,33 @@ no timelock    no governance   no migration hatch</pre>
 
     <h2 id="swap">Swap</h2>
     <p>
-      Swap lets you spend USDC from any chain on any Arc token, using Arc's <b>Unified
-      Balance</b> — your USDC across every supported chain treated as one balance, delivered
-      through Circle's App Kit on top of Circle Gateway.
+      Swap trades USDC against a coin, in either direction, from one screen. Pay with USDC on
+      Arc, or from your <b>unified balance</b> when the USDC is on another chain. Every trade
+      shows its rate, minimum received, slippage and fee before you sign.
     </p>
     <p>
-      Coins launched elsewhere are routable too, with an additional protocol fee. No creator or
-      referrer share applies to those, since Hexapus did not launch them.
+      Coins launched on Hexapus carry everything this page describes — the curve, the sell
+      tax, the locked liquidity, the fee split. Paste the address of a coin launched anywhere
+      else on Arc and Swap resolves it and shows what the contract says about itself, and that
+      is all Hexapus can vouch for: its code, its liquidity and its owner are whatever its
+      deployer made them. These coins are marked <b>unverified</b> in the picker with the
+      warning written out, and trading them is not enabled yet. Check the contract yourself
+      before touching it anywhere.
     </p>
 
     <h2 id="bringing">Bringing USDC to Arc</h2>
     <p>
-      Moving USDC to Arc uses <b>CCTP v2</b> natively — burned on the source chain, minted on
-      Arc, no wrapped assets and no third-party bridge risk.
+      USDC on Base, Ethereum, Arbitrum, Optimism, Avalanche and the other Gateway chains is
+      spendable on Hexapus without a separate bridge. Deposit it into your <b>unified
+      balance</b> on the chain where it sits — once per chain, from the Swap page — and it
+      counts as one balance from then on.
     </p>
     <p>
-      In practice you rarely need it as a separate step: the buy flow batches the Gateway mint
-      and the purchase under a single signature, so bringing money from Base and buying a coin
-      on Arc is one confirmation.
+      When a trade needs more USDC than you hold on Arc, Swap pulls the shortfall itself: the
+      amount is burned on the source chain and minted on Arc through Circle Gateway, then the
+      buy executes. You sign the pull on the source chain and the buy on Arc; nothing is
+      wrapped and no third-party bridge holds your funds in between. A deposit becomes
+      spendable once its chain finalises — a few minutes on Ethereum, faster on the rollups.
     </p>
   </article>
 

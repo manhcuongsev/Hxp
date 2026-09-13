@@ -270,7 +270,7 @@ const RENDER = {
   },
 
   async migrated() {
-    const rows = await withMetrics((await get(HEXA_API, '/launches?limit=200')).filter((r) => r.phase === 'GRADUATED'));
+    const rows = byKind(await withMetrics((await get(HEXA_API, '/launches?limit=200')).filter((r) => r.phase === 'GRADUATED')));
     if (!rows.length) return show('empty', 'Nothing has graduated yet',
       `A coin graduates when its curve sells out, then its liquidity moves into a Uniswap v3
        pool and locks.`);
@@ -361,7 +361,7 @@ const pager = document.getElementById('pager');
  * row — `bundle` comes from the on-chain metadata, not a lookup — so it is the same answer on
  * every tab.
  */
-const KIND_TABS = ['recent', 'new', 'booster', 'monitoring'];
+const KIND_TABS = ['recent', 'new', 'booster', 'migrated', 'monitoring'];
 const currentKind = () => kindSeg.querySelector('button[aria-selected=true]')?.dataset.k ?? 'all';
 const byKind = (rows) => {
   const k = currentKind();

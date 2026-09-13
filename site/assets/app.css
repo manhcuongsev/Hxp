@@ -165,7 +165,9 @@ h2{font-size:22.5px;letter-spacing:-.02em;font-weight:640}
 .tag.v3{background:rgba(168,85,247,.12);color:#a855f7;border-color:rgba(168,85,247,.28)}
 /* Bundle wears its own colour rather than another purple: it answers a different question from
    the phase tag beside it, and two purples read as one thing said twice. */
-.tag.bundle{background:rgba(95,227,161,.13);color:var(--up);border-color:rgba(95,227,161,.32)}
+/* Same amber as the card's Bundle pin. It was green here, so the two labels for one launch
+   mode looked like two different things. */
+.tag.bundle{background:rgba(240,169,28,.13);color:#ffcf5a;border-color:rgba(240,169,28,.42)}
 
 /* ── tabs ────────────────────────────────────────────── */
 .tabs{display:flex;gap:5px;flex-wrap:wrap;margin:16px 0 6px}
