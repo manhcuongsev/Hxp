@@ -94,9 +94,9 @@ So:
 | Bonding curve | Our contract, per-trade | ✅ 20/60/20 |
 | After graduation | Pool fee tier, aggregate | ❌ 30/70 protocol/creator |
 
-Any launchpad advertising lifetime referral revenue on an open AMM pool is either routing
-all volume through a bypassable router, or not being precise. Hexapus should say plainly
-that referral rewards apply to the launch phase.
+On a Uniswap v3 pool, "lifetime referral revenue" can only mean a router fee — and a router
+on an open pool is bypassed by calling the pool directly. Referral rewards on Hexapus apply
+to the curve phase; extending them past graduation is a v4 hook, covered below.
 
 ## Payout mechanics
 

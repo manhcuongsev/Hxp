@@ -21,3 +21,9 @@ site/assets/abi.json
 site/assets/deployments.json
 site/assets/config.js
 site/assets/swap.bundle.js
+
+# Internal notes and local tooling. Only FEES.md and SWAP.md are published.
+docs/*
+!docs/FEES.md
+!docs/SWAP.md
+.claude/

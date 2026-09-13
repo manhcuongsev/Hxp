@@ -30,19 +30,15 @@ broken. Three examples, all verified against the chain rather than assumed:
 - **There is no Uniswap on Arc.** So Hexapus ships its own AMM, and earns the swap fees
   rather than handing them to someone else's DEX.
 
-Full list: [docs/ARC-CONSTRAINTS.md](docs/ARC-CONSTRAINTS.md).
 
 ## Layout
 
 ```
-docs/ARC-CONSTRAINTS.md   what Arc allows and forbids — read first
-docs/SPEC.md              contract specification v0.1
-docs/CURVE.md             curve parameters, and how pump.fun / Virtuals / NOXA set theirs
-docs/FEES.md              1% fee, 40/40/20 split, single-tier referrals
+docs/FEES.md              1% fee, 20/60/20 split, single-tier referrals
 docs/SWAP.md              unified balance, bridge-in, batching
-contracts/                Solidity — compiles clean, unaudited, never run on Arc
+contracts/                Solidity — deployed on Arc testnet, unaudited
 indexer/                  Arc indexer (viem + sqlite + express)
-site/                     Home + Explore, animated logo
+site/                     Home, Explore, coin terminal, Swap, Profile, Docs
 test/integration.mjs      end-to-end against anvil + real Uniswap v3-core
 ```
 
